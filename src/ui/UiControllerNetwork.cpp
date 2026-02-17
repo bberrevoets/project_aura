@@ -154,7 +154,16 @@ void UiController::update_datetime_ui() {
 void UiController::update_wifi_texts() {
     if (objects.label_wifi_title) safe_label_set_text(objects.label_wifi_title, UiText::LabelWifiSettingsTitle());
     if (objects.label_wifi_status) safe_label_set_text(objects.label_wifi_status, UiText::LabelWifiStatus());
-    if (objects.label_wifi_help) safe_label_set_text(objects.label_wifi_help, UiText::LabelWifiHelp());
+    if (objects.label_wifi_help) {
+        String help_text = UiText::LabelWifiHelp();
+        String ap_ssid = networkManager.apSsid();
+        if (ap_ssid.isEmpty()) {
+            ap_ssid = Config::WIFI_AP_SSID;
+        }
+        help_text.replace(Config::WIFI_AP_SSID, ap_ssid);
+        help_text.replace("ProjectAura-Setup", ap_ssid);
+        safe_label_set_text(objects.label_wifi_help, help_text.c_str());
+    }
     if (objects.label_wifi_ssid) safe_label_set_text(objects.label_wifi_ssid, UiText::LabelWifiSsid());
     if (objects.label_wifi_ip) safe_label_set_text(objects.label_wifi_ip, UiText::LabelWifiIp());
     if (objects.label_btn_wifi_toggle) safe_label_set_text(objects.label_btn_wifi_toggle, UiText::MqttToggleLabel());
@@ -192,12 +201,16 @@ void UiController::update_wifi_ui() {
 
     if (objects.label_wifi_ssid_value) {
         String safe_ssid;
+        String ap_ssid = networkManager.apSsid();
+        if (ap_ssid.isEmpty()) {
+            ap_ssid = Config::WIFI_AP_SSID;
+        }
         const char *ssid_text = UiText::ValueMissing();
         if (wifi_state == AuraNetworkManager::WIFI_STATE_STA_CONNECTED && !wifi_ssid.isEmpty()) {
             safe_ssid = wifi_label_safe(wifi_ssid);
             ssid_text = safe_ssid.c_str();
         } else if (wifi_state == AuraNetworkManager::WIFI_STATE_AP_CONFIG) {
-            ssid_text = WIFI_AP_SSID;
+            ssid_text = ap_ssid.c_str();
         } else if (wifi_enabled && !wifi_ssid.isEmpty()) {
             safe_ssid = wifi_label_safe(wifi_ssid);
             ssid_text = safe_ssid.c_str();
@@ -463,7 +476,7 @@ void UiController::update_mqtt_ui() {
     // Update QR code - show only when WiFi is connected.
     if (objects.qrcode_mqtt_portal) {
         if (wifi_ready) {
-            String mqtt_url = UiText::MqttPortalUrl();
+            String mqtt_url = networkManager.localUrl("/mqtt");
             lv_obj_clear_flag(objects.qrcode_mqtt_portal, LV_OBJ_FLAG_HIDDEN);
             lv_qrcode_update(objects.qrcode_mqtt_portal, mqtt_url.c_str(), mqtt_url.length());
         } else {
@@ -493,7 +506,13 @@ void UiController::update_mqtt_ui() {
 void UiController::update_mqtt_texts() {
     if (objects.label_mqtt_title) safe_label_set_text(objects.label_mqtt_title, UiText::LabelMqttSettingsTitle());
     if (objects.label_mqtt_status) safe_label_set_text(objects.label_mqtt_status, UiText::LabelMqttStatus());
-    if (objects.label_mqtt_help) safe_label_set_text(objects.label_mqtt_help, UiText::LabelMqttHelp());
+    if (objects.label_mqtt_help) {
+        String help_text = UiText::LabelMqttHelp();
+        const String mqtt_url = networkManager.localUrl("/mqtt");
+        help_text.replace(UiText::MqttPortalUrl(), mqtt_url);
+        help_text.replace("http://aura.local/mqtt", mqtt_url);
+        safe_label_set_text(objects.label_mqtt_help, help_text.c_str());
+    }
     if (objects.label_mqtt_device_ip) safe_label_set_text(objects.label_mqtt_device_ip, UiText::LabelMqttDeviceIp());
     if (objects.label_mqtt_broker) safe_label_set_text(objects.label_mqtt_broker, UiText::LabelMqttBroker());
     if (objects.label_mqtt_topic) safe_label_set_text(objects.label_mqtt_topic, UiText::LabelMqttTopic());

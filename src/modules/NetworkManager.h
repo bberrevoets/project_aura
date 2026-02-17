@@ -60,6 +60,9 @@ public:
     void markUiDirty() { wifi_ui_dirty_ = true; }
     const String &ssid() const { return wifi_ssid_; }
     const String &pass() const { return wifi_pass_; }
+    const String &hostname() const { return hostname_; }
+    const String &apSsid() const { return ap_ssid_; }
+    String localUrl(const char *path = nullptr) const;
     uint8_t retryCount() const { return wifi_retry_count_; }
     const String &scanOptions() const { return wifi_scan_options_; }
     bool scanInProgress() const { return wifi_scan_in_progress_; }
@@ -80,6 +83,8 @@ private:
     uint32_t wifi_connect_start_ms_ = 0;
     String wifi_ssid_;
     String wifi_pass_;
+    String hostname_;
+    String ap_ssid_;
     String wifi_scan_options_;
     bool wifi_scan_in_progress_ = false;
     uint32_t wifi_scan_started_ms_ = 0;
