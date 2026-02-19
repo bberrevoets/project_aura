@@ -172,6 +172,10 @@ void wifi_handle_root() {
     if (!context || !context->server) {
         return;
     }
+    if (!context->wifi_is_ap_mode || !context->wifi_is_ap_mode()) {
+        context->server->send(404, "text/plain", "Not found");
+        return;
+    }
     WebServer &server = *context->server;
     if (server.hasArg("scan") && context->wifi_start_scan) {
         context->wifi_start_scan();
@@ -241,6 +245,10 @@ void wifi_handle_not_found() {
 void mqtt_handle_root() {
     WebHandlerContext *context = ctx();
     if (!context || !context->server || !context->mqtt_client) {
+        return;
+    }
+    if (!context->wifi_is_connected || !context->wifi_is_connected()) {
+        context->server->send(404, "text/plain", "Not found");
         return;
     }
     if (!context->mqtt_ui_open || !*context->mqtt_ui_open) {
@@ -318,6 +326,10 @@ void mqtt_handle_save() {
         return;
     }
     WebServer &server = *context->server;
+    if (!context->wifi_is_connected || !context->wifi_is_connected()) {
+        server.send(404, "text/plain", "Not found");
+        return;
+    }
     if (!context->mqtt_ui_open || !*context->mqtt_ui_open) {
         server.send(409, "text/plain", "Open MQTT screen to enable");
         return;
