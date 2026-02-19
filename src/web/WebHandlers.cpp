@@ -627,8 +627,16 @@ void dac_handle_state() {
     sensors["co2_valid"] = data.co2_valid;
     sensors["co_ppm"] = data.co_ppm;
     sensors["co_valid"] = data.co_valid && data.co_sensor_present;
+    sensors["pm05"] = data.pm05;
+    sensors["pm05_valid"] = data.pm05_valid;
+    sensors["pm1"] = data.pm1;
+    sensors["pm1_valid"] = data.pm1_valid;
+    sensors["pm4"] = data.pm4;
+    sensors["pm4_valid"] = data.pm4_valid;
     sensors["pm25"] = data.pm25;
     sensors["pm25_valid"] = data.pm25_valid;
+    sensors["pm10"] = data.pm10;
+    sensors["pm10_valid"] = data.pm10_valid;
     sensors["voc_index"] = data.voc_index;
     sensors["voc_valid"] = data.voc_valid;
     sensors["nox_index"] = data.nox_index;
