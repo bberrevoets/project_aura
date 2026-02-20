@@ -15,6 +15,7 @@
 #include "lvgl_v8_port.h"
 #include "config/AppConfig.h"
 #include "config/AppData.h"
+#include "core/MathUtils.h"
 #include "modules/ChartsHistory.h"
 #include "modules/DacAutoConfig.h"
 #include "modules/FanControl.h"
@@ -22,6 +23,10 @@
 #include "modules/StorageManager.h"
 #include "web/WebTemplates.h"
 #include "ui/ThemeManager.h"
+
+#ifndef APP_VERSION
+#define APP_VERSION "dev"
+#endif
 
 namespace {
 
@@ -208,6 +213,43 @@ const char *dac_status_text(const FanControl &fan) {
         return "OFFLINE";
     }
     return fan.isRunning() ? "RUNNING" : "STOPPED";
+}
+
+void json_set_float_or_null(ArduinoJson::JsonObject obj, const char *key, bool valid, float value) {
+    if (valid && isfinite(value)) {
+        obj[key] = value;
+    } else {
+        obj[key] = nullptr;
+    }
+}
+
+void json_set_int_or_null(ArduinoJson::JsonObject obj, const char *key, bool valid, int value) {
+    if (valid) {
+        obj[key] = value;
+    } else {
+        obj[key] = nullptr;
+    }
+}
+
+String format_uptime_human(uint32_t uptime_seconds) {
+    uint32_t days = uptime_seconds / 86400UL;
+    uptime_seconds %= 86400UL;
+    uint32_t hours = uptime_seconds / 3600UL;
+    uptime_seconds %= 3600UL;
+    uint32_t minutes = uptime_seconds / 60UL;
+
+    char buf[32];
+    if (days > 0) {
+        snprintf(buf, sizeof(buf), "%lud %luh %lum",
+                 static_cast<unsigned long>(days),
+                 static_cast<unsigned long>(hours),
+                 static_cast<unsigned long>(minutes));
+    } else {
+        snprintf(buf, sizeof(buf), "%luh %lum",
+                 static_cast<unsigned long>(hours),
+                 static_cast<unsigned long>(minutes));
+    }
+    return String(buf);
 }
 
 } // namespace
@@ -942,6 +984,110 @@ void charts_handle_data() {
             values.add(value);
         }
     }
+
+    String json;
+    serializeJson(doc, json);
+    server.send(200, "application/json", json);
+}
+
+void state_handle_data() {
+    WebHandlerContext *context = ctx();
+    if (!context || !context->server || !context->sensor_data) {
+        return;
+    }
+
+    const SensorData &data = *context->sensor_data;
+    WebServer &server = *context->server;
+    const uint32_t uptime_s = millis() / 1000UL;
+
+    ArduinoJson::JsonDocument doc;
+    doc["success"] = true;
+    doc["uptime_s"] = uptime_s;
+    doc["timestamp_ms"] = millis();
+
+    ArduinoJson::JsonObject sensors = doc["sensors"].to<ArduinoJson::JsonObject>();
+    json_set_float_or_null(sensors, "temp", data.temp_valid, data.temperature);
+    json_set_float_or_null(sensors, "rh", data.hum_valid, data.humidity);
+    json_set_float_or_null(sensors, "pressure", data.pressure_valid, data.pressure);
+    json_set_float_or_null(sensors, "pm05", data.pm05_valid, data.pm05);
+    json_set_float_or_null(sensors, "pm1", data.pm1_valid, data.pm1);
+    json_set_float_or_null(sensors, "pm25", data.pm25_valid, data.pm25);
+    json_set_float_or_null(sensors, "pm4", data.pm4_valid, data.pm4);
+    json_set_float_or_null(sensors, "pm10", data.pm10_valid, data.pm10);
+    json_set_int_or_null(sensors, "co2", data.co2_valid, data.co2);
+    json_set_int_or_null(sensors, "voc", data.voc_valid, data.voc_index);
+    json_set_int_or_null(sensors, "nox", data.nox_valid, data.nox_index);
+    json_set_float_or_null(sensors, "hcho", data.hcho_valid, data.hcho);
+    json_set_float_or_null(sensors, "co", data.co_valid && data.co_sensor_present, data.co_ppm);
+    sensors["co_sensor_present"] = data.co_sensor_present;
+    sensors["co_warmup"] = data.co_warmup;
+
+    ArduinoJson::JsonObject derived = doc["derived"].to<ArduinoJson::JsonObject>();
+    const bool climate_valid = data.temp_valid && data.hum_valid;
+    const float dew_point = climate_valid ? MathUtils::compute_dew_point_c(data.temperature, data.humidity) : NAN;
+    const float abs_humidity = climate_valid ? MathUtils::compute_absolute_humidity_gm3(data.temperature, data.humidity) : NAN;
+    const int mold_risk = climate_valid ? MathUtils::compute_mold_risk_index(data.temperature, data.humidity) : -1;
+    json_set_float_or_null(derived, "dew_point", climate_valid, dew_point);
+    json_set_float_or_null(derived, "ah", climate_valid, abs_humidity);
+    if (mold_risk >= 0) {
+        derived["mold"] = mold_risk;
+    } else {
+        derived["mold"] = nullptr;
+    }
+    json_set_float_or_null(derived, "pressure_delta_3h", data.pressure_delta_3h_valid, data.pressure_delta_3h);
+    json_set_float_or_null(derived, "pressure_delta_24h", data.pressure_delta_24h_valid, data.pressure_delta_24h);
+    derived["uptime"] = format_uptime_human(uptime_s);
+
+    ArduinoJson::JsonObject network = doc["network"].to<ArduinoJson::JsonObject>();
+    const bool wifi_enabled = context->wifi_enabled ? *context->wifi_enabled : false;
+    const bool ap_mode = context->wifi_is_ap_mode && context->wifi_is_ap_mode();
+    const bool sta_connected = context->wifi_is_connected && context->wifi_is_connected();
+    network["wifi_enabled"] = wifi_enabled;
+    network["mode"] = ap_mode ? "ap" : (sta_connected ? "sta" : "off");
+
+    String wifi_ssid;
+    if (ap_mode) {
+        wifi_ssid = WiFi.softAPSSID();
+    } else if (sta_connected) {
+        wifi_ssid = WiFi.SSID();
+    } else if (context->wifi_ssid) {
+        wifi_ssid = *context->wifi_ssid;
+    }
+    network["wifi_ssid"] = wifi_ssid;
+
+    String ip = ap_mode ? WiFi.softAPIP().toString() : WiFi.localIP().toString();
+    network["ip"] = ip;
+
+    const int rssi = sta_connected ? WiFi.RSSI() : 0;
+    if (sta_connected && rssi < 0) {
+        network["rssi"] = rssi;
+    } else {
+        network["rssi"] = nullptr;
+    }
+
+    if (context->hostname) {
+        network["hostname"] = *context->hostname;
+    } else {
+        network["hostname"] = "aura";
+    }
+
+    if (context->mqtt_host) {
+        network["mqtt_broker"] = *context->mqtt_host;
+    } else {
+        network["mqtt_broker"] = "";
+    }
+    if (context->mqtt_user_enabled) {
+        network["mqtt_enabled"] = *context->mqtt_user_enabled;
+    } else {
+        network["mqtt_enabled"] = false;
+    }
+    network["mqtt_connected"] = context->mqtt_client && context->mqtt_client->connected();
+
+    ArduinoJson::JsonObject system = doc["system"].to<ArduinoJson::JsonObject>();
+    system["firmware"] = APP_VERSION;
+    system["build_date"] = __DATE__;
+    system["build_time"] = __TIME__;
+    system["uptime"] = format_uptime_human(uptime_s);
 
     String json;
     serializeJson(doc, json);

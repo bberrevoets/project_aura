@@ -237,6 +237,63 @@ const parseChartApiPayload = (payload) => {
   return { points, latest };
 };
 
+const finiteNumberOrNull = (value) =>
+  typeof value === 'number' && Number.isFinite(value) ? value : null;
+
+const stringOrNull = (value) =>
+  typeof value === 'string' && value.trim().length > 0 ? value : null;
+
+const parseStateApiPayload = (payload) => {
+  if (!payload || payload.success !== true) {
+    throw new Error('Invalid state payload');
+  }
+
+  const sensors = payload.sensors || {};
+  const derived = payload.derived || {};
+  const network = payload.network || {};
+  const system = payload.system || {};
+
+  return {
+    current: {
+      co2: finiteNumberOrNull(sensors.co2),
+      temp: finiteNumberOrNull(sensors.temp),
+      rh: finiteNumberOrNull(sensors.rh),
+      pressure: finiteNumberOrNull(sensors.pressure),
+      pm05: finiteNumberOrNull(sensors.pm05),
+      pm1: finiteNumberOrNull(sensors.pm1),
+      pm25: finiteNumberOrNull(sensors.pm25),
+      pm4: finiteNumberOrNull(sensors.pm4),
+      pm10: finiteNumberOrNull(sensors.pm10),
+      voc: finiteNumberOrNull(sensors.voc),
+      nox: finiteNumberOrNull(sensors.nox),
+      hcho: finiteNumberOrNull(sensors.hcho),
+      co: finiteNumberOrNull(sensors.co),
+    },
+    derived: {
+      ah: finiteNumberOrNull(derived.ah),
+      dewPoint: finiteNumberOrNull(derived.dew_point),
+      mold: finiteNumberOrNull(derived.mold),
+      delta3h: finiteNumberOrNull(derived.pressure_delta_3h),
+      delta24h: finiteNumberOrNull(derived.pressure_delta_24h),
+      uptime: stringOrNull(derived.uptime),
+    },
+    connectivity: {
+      wifiSsid: stringOrNull(network.wifi_ssid),
+      hostname: stringOrNull(network.hostname),
+      ip: stringOrNull(network.ip),
+      rssi: finiteNumberOrNull(network.rssi),
+      mqttBroker: stringOrNull(network.mqtt_broker),
+      mqttConnected: typeof network.mqtt_connected === 'boolean' ? network.mqtt_connected : null,
+    },
+    system: {
+      firmware: stringOrNull(system.firmware),
+      buildDate: stringOrNull(system.build_date),
+      buildTime: stringOrNull(system.build_time),
+      uptime: stringOrNull(system.uptime),
+    },
+  };
+};
+
 // ============ THRESHOLDS & COLORS ============
 const thresholds = {
   // Synced to firmware thresholds (AppConfig.h + UiController.cpp)
@@ -868,8 +925,11 @@ function AuraDashboard() {
     }));
   };
   
-  // Sensors tab remains visual-only for now.
   const fullData = SENSOR_PLACEHOLDER_HISTORY;
+  const placeholderCurrent = fullData[fullData.length - 1];
+
+  const [stateApi, setStateApi] = useState(null);
+  const [stateApiLive, setStateApiLive] = useState(false);
 
   const [chartApiData, setChartApiData] = useState(null);
   const [chartApiLatest, setChartApiLatest] = useState({});
@@ -921,6 +981,37 @@ function AuraDashboard() {
     return () => controller.abort();
   }, [activeTab, chartRange, chartGroup]);
 
+  useEffect(() => {
+    let active = true;
+
+    const loadState = () => {
+      fetch('/api/state', { cache: 'no-store' })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((payload) => {
+          if (!active) return;
+          const parsed = parseStateApiPayload(payload);
+          setStateApi(parsed);
+          setStateApiLive(true);
+        })
+        .catch(() => {
+          if (!active) return;
+          setStateApiLive(false);
+        });
+    };
+
+    loadState();
+    const intervalId = setInterval(loadState, 5000);
+    return () => {
+      active = false;
+      clearInterval(intervalId);
+    };
+  }, []);
+
   const chartData = chartApiData || fallbackChartData;
   const chartLatestValues = chartApiLive ? chartApiLatest : {};
   const chartDataWithPm05 = useMemo(() => {
@@ -934,16 +1025,35 @@ function AuraDashboard() {
     }));
   }, [chartData]);
 
-  const current = fullData[fullData.length - 1];
+  const stateCurrent = stateApi?.current || {};
+  const stateDerived = stateApi?.derived || {};
+  const stateConnectivity = stateApi?.connectivity || {};
+  const stateSystem = stateApi?.system || {};
+  const current = {
+    co2: stateCurrent.co2 ?? placeholderCurrent.co2,
+    temp: stateCurrent.temp ?? placeholderCurrent.temp,
+    rh: stateCurrent.rh ?? placeholderCurrent.rh,
+    pressure: stateCurrent.pressure ?? placeholderCurrent.pressure,
+    pm05: stateCurrent.pm05 ?? SENSOR_PLACEHOLDER_PM05,
+    pm1: stateCurrent.pm1 ?? placeholderCurrent.pm1,
+    pm25: stateCurrent.pm25 ?? placeholderCurrent.pm25,
+    pm4: stateCurrent.pm4 ?? placeholderCurrent.pm4,
+    pm10: stateCurrent.pm10 ?? placeholderCurrent.pm10,
+    voc: stateCurrent.voc ?? placeholderCurrent.voc,
+    nox: stateCurrent.nox ?? placeholderCurrent.nox,
+    hcho: stateCurrent.hcho ?? placeholderCurrent.hcho,
+    co: stateCurrent.co ?? placeholderCurrent.co,
+    mold: stateDerived.mold ?? placeholderCurrent.mold,
+  };
   
-  const ah = SENSOR_PLACEHOLDER_DERIVED.ah;
-  const dewPoint = SENSOR_PLACEHOLDER_DERIVED.dewPoint;
-  const delta3h = SENSOR_PLACEHOLDER_DERIVED.delta3h;
-  const delta24h = SENSOR_PLACEHOLDER_DERIVED.delta24h;
+  const ah = stateDerived.ah ?? SENSOR_PLACEHOLDER_DERIVED.ah;
+  const dewPoint = stateDerived.dewPoint ?? SENSOR_PLACEHOLDER_DERIVED.dewPoint;
+  const delta3h = stateDerived.delta3h ?? SENSOR_PLACEHOLDER_DERIVED.delta3h;
+  const delta24h = stateDerived.delta24h ?? SENSOR_PLACEHOLDER_DERIVED.delta24h;
   const co2Status = getStatus(current.co2, thresholds.co2);
   const tempStatus = getStatus(current.temp, thresholds.temp);
   const rhStatus = getStatus(current.rh, thresholds.rh);
-  const pm05Status = getStatus(SENSOR_PLACEHOLDER_PM05, thresholds.pm05);
+  const pm05Status = getStatus(current.pm05, thresholds.pm05);
   const pm1Status = getStatus(current.pm1, thresholds.pm1);
   const pm25Status = getStatus(current.pm25, thresholds.pm25);
   const pm4Status = getStatus(current.pm4, thresholds.pm4);
@@ -955,18 +1065,18 @@ function AuraDashboard() {
   const moldStatus = getStatus(current.mold, thresholds.mold);
   const pressureTrend3h = trendToken(delta3h, false);
   const pressureTrend24h = trendToken(delta24h, true);
-  const uptime = SENSOR_PLACEHOLDER_DERIVED.uptime;
+  const uptime = stateSystem.uptime || stateDerived.uptime || SENSOR_PLACEHOLDER_DERIVED.uptime;
 
   const connectivity = {
-    wifiSsid: 'MyHome_5G',
-    hostname: PREVIEW_HOSTNAME,
-    ip: '192.168.1.105',
-    rssi: -65,
-    mqttBroker: '192.168.1.200',
-    mqttConnected: true,
+    wifiSsid: stateConnectivity.wifiSsid || 'MyHome_5G',
+    hostname: stateConnectivity.hostname || PREVIEW_HOSTNAME,
+    ip: stateConnectivity.ip || '192.168.1.105',
+    rssi: typeof stateConnectivity.rssi === 'number' ? stateConnectivity.rssi : -65,
+    mqttBroker: stateConnectivity.mqttBroker || '192.168.1.200',
+    mqttConnected: typeof stateConnectivity.mqttConnected === 'boolean' ? stateConnectivity.mqttConnected : true,
   };
-  const firmwareVersion = 'v2.1.0-beta';
-  const firmwareBuild = '20240315';
+  const firmwareVersion = stateSystem.firmware || 'v2.1.0-beta';
+  const firmwareBuild = [stateSystem.buildDate, stateSystem.buildTime].filter(Boolean).join(' ') || '20240315';
   const localWebUrl = `http://${connectivity.hostname}.local`;
   const signalClass =
     connectivity.rssi > -67
@@ -974,6 +1084,12 @@ function AuraDashboard() {
       : connectivity.rssi > -75
         ? "text-yellow-400 text-sm font-semibold"
         : "text-red-400 text-sm font-semibold";
+
+  useEffect(() => {
+    if (!isEditingName && stateConnectivity.hostname) {
+      setDeviceName(stateConnectivity.hostname);
+    }
+  }, [isEditingName, stateConnectivity.hostname]);
   
   const alerts = [
     { time: '14:32', type: 'CO2', message: 'Threshold exceeded (>1000 ppm)', severity: 'warning' },
@@ -1078,7 +1194,7 @@ function AuraDashboard() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5 md:gap-3">
-            <GasMetricCard label="PM0.5" value={SENSOR_PLACEHOLDER_PM05} unit="#/cm3" max={thresholds.pm05.bad} status={pm05Status} decimals={0} compact />
+            <GasMetricCard label="PM0.5" value={current.pm05} unit="#/cm3" max={thresholds.pm05.bad} status={pm05Status} decimals={0} compact />
             <GasMetricCard label="PM1.0" value={current.pm1} unit="ug/m3" max={thresholds.pm1.bad} status={pm1Status} compact />
             <GasMetricCard label="PM2.5" value={current.pm25} unit="ug/m3" max={thresholds.pm25.bad} status={pm25Status} compact />
             <GasMetricCard label="PM4.0" value={current.pm4} unit="ug/m3" max={thresholds.pm4.bad} status={pm4Status} compact />

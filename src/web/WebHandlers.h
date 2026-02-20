@@ -77,3 +77,4 @@ void dac_handle_state();
 void dac_handle_action();
 void dac_handle_auto();
 void charts_handle_data();
+void state_handle_data();
