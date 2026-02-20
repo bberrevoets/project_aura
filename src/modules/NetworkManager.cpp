@@ -154,6 +154,10 @@ void AuraNetworkManager::attachThemeContext(ThemeManager &themeManager) {
     web_ctx_.theme_manager = &themeManager;
 }
 
+void AuraNetworkManager::attachChartsContext(ChartsHistory &chartsHistory) {
+    web_ctx_.charts_history = &chartsHistory;
+}
+
 void AuraNetworkManager::attachDacContext(FanControl &fanControl,
                                           SensorManager &sensorManager,
                                           SensorData &sensorData) {
@@ -178,6 +182,7 @@ void AuraNetworkManager::registerServerRoutes() {
     server_.on("/dac/state", HTTP_GET, dac_handle_state);
     server_.on("/dac/action", HTTP_POST, dac_handle_action);
     server_.on("/dac/auto", HTTP_POST, dac_handle_auto);
+    server_.on("/api/charts", HTTP_GET, charts_handle_data);
     server_.onNotFound(wifi_handle_not_found);
     server_routes_registered_ = true;
 }

@@ -14,6 +14,7 @@ class StorageManager;
 class ThemeManager;
 class FanControl;
 class SensorManager;
+class ChartsHistory;
 struct SensorData;
 
 struct WebHandlerContext {
@@ -51,6 +52,7 @@ struct WebHandlerContext {
 
     FanControl *fan_control = nullptr;
     SensorManager *sensor_manager = nullptr;
+    ChartsHistory *charts_history = nullptr;
     SensorData *sensor_data = nullptr;
 };
 
@@ -72,3 +74,4 @@ void dac_handle_root();
 void dac_handle_state();
 void dac_handle_action();
 void dac_handle_auto();
+void charts_handle_data();

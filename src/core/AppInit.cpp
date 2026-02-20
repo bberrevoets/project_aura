@@ -129,6 +129,7 @@ void AppInit::initManagersAndConfig(Context &ctx, StorageManager::BootAction boo
         ctx.mqttManager.anonymousRef(),
         mqtt_sync_with_wifi_cb);
     ctx.networkManager.attachThemeContext(ctx.themeManager);
+    ctx.networkManager.attachChartsContext(ctx.chartsHistory);
     ctx.networkManager.attachDacContext(ctx.fanControl, ctx.sensorManager, ctx.currentData);
     g_wifi_state_ctx.network = &ctx.networkManager;
     g_wifi_state_ctx.time_manager = &ctx.timeManager;

@@ -15,6 +15,7 @@ class PubSubClient;
 class ThemeManager;
 class FanControl;
 class SensorManager;
+class ChartsHistory;
 struct SensorData;
 
 class AuraNetworkManager {
@@ -38,6 +39,7 @@ public:
                            bool &mqtt_anonymous,
                            void (*mqtt_sync_with_wifi)());
     void attachThemeContext(ThemeManager &themeManager);
+    void attachChartsContext(ChartsHistory &chartsHistory);
     void attachDacContext(FanControl &fanControl, SensorManager &sensorManager, SensorData &sensorData);
     void setStateChangeCallback(StateChangeCallback cb, void *ctx);
     void poll();

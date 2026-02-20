@@ -6,6 +6,7 @@
 
 #include "web/WebHandlers.h"
 
+#include <math.h>
 #include <WiFi.h>
 #include <WebServer.h>
 #include <PubSubClient.h>
@@ -14,6 +15,7 @@
 #include "lvgl_v8_port.h"
 #include "config/AppConfig.h"
 #include "config/AppData.h"
+#include "modules/ChartsHistory.h"
 #include "modules/DacAutoConfig.h"
 #include "modules/FanControl.h"
 #include "modules/SensorManager.h"
@@ -29,9 +31,99 @@ bool g_deferred_wifi_start_sta = false;
 bool g_deferred_mqtt_sync = false;
 uint32_t g_deferred_wifi_start_sta_due_ms = 0;
 uint32_t g_deferred_mqtt_sync_due_ms = 0;
+constexpr uint32_t kChartStepS = Config::CHART_HISTORY_STEP_MS / 1000UL;
+
+struct ChartMetricSpec {
+    const char *key;
+    const char *unit;
+    ChartsHistory::Metric metric;
+};
+
+constexpr ChartMetricSpec kChartCoreMetrics[] = {
+    {"co2", "ppm", ChartsHistory::METRIC_CO2},
+    {"temperature", "C", ChartsHistory::METRIC_TEMPERATURE},
+    {"humidity", "%", ChartsHistory::METRIC_HUMIDITY},
+    {"pressure", "hPa", ChartsHistory::METRIC_PRESSURE},
+};
+
+constexpr ChartMetricSpec kChartGasMetrics[] = {
+    {"co", "ppm", ChartsHistory::METRIC_CO},
+    {"voc", "idx", ChartsHistory::METRIC_VOC},
+    {"nox", "idx", ChartsHistory::METRIC_NOX},
+    {"hcho", "ppb", ChartsHistory::METRIC_HCHO},
+};
+
+constexpr ChartMetricSpec kChartPmMetrics[] = {
+    {"pm05", "#/cm3", ChartsHistory::METRIC_PM05},
+    {"pm1", "ug/m3", ChartsHistory::METRIC_PM1},
+    {"pm25", "ug/m3", ChartsHistory::METRIC_PM25},
+    {"pm4", "ug/m3", ChartsHistory::METRIC_PM4},
+    {"pm10", "ug/m3", ChartsHistory::METRIC_PM10},
+};
 
 WebHandlerContext *ctx() {
     return g_ctx;
+}
+
+uint16_t chart_window_points(const String &window_arg, const char *&window_name) {
+    String window = window_arg;
+    window.trim();
+    window.toLowerCase();
+
+    if (window == "1h") {
+        window_name = "1h";
+        return Config::CHART_HISTORY_1H_STEPS;
+    }
+    if (window == "24h") {
+        window_name = "24h";
+        return Config::CHART_HISTORY_24H_SAMPLES;
+    }
+    window_name = "3h";
+    return Config::CHART_HISTORY_3H_STEPS;
+}
+
+void chart_group_metrics(const String &group_arg,
+                         const char *&group_name,
+                         const ChartMetricSpec *&metrics,
+                         size_t &metric_count) {
+    String group = group_arg;
+    group.trim();
+    group.toLowerCase();
+
+    if (group == "gases" || group == "gas") {
+        group_name = "gases";
+        metrics = kChartGasMetrics;
+        metric_count = sizeof(kChartGasMetrics) / sizeof(kChartGasMetrics[0]);
+        return;
+    }
+    if (group == "pm") {
+        group_name = "pm";
+        metrics = kChartPmMetrics;
+        metric_count = sizeof(kChartPmMetrics) / sizeof(kChartPmMetrics[0]);
+        return;
+    }
+    group_name = "core";
+    metrics = kChartCoreMetrics;
+    metric_count = sizeof(kChartCoreMetrics) / sizeof(kChartCoreMetrics[0]);
+}
+
+bool chart_latest_metric(const ChartsHistory &history,
+                         ChartsHistory::Metric metric,
+                         float &out_value) {
+    uint16_t total_count = history.count();
+    if (total_count == 0) {
+        return false;
+    }
+    for (int offset = static_cast<int>(total_count) - 1; offset >= 0; --offset) {
+        float value = 0.0f;
+        bool valid = false;
+        if (history.metricValueFromOldest(static_cast<uint16_t>(offset), metric, value, valid) &&
+            valid && isfinite(value)) {
+            out_value = value;
+            return true;
+        }
+    }
+    return false;
 }
 
 bool deadline_reached(uint32_t now_ms, uint32_t due_ms) {
@@ -750,4 +842,85 @@ void dac_handle_auto() {
         }
     }
     server.send(200, "application/json", "{\"success\":true}");
+}
+
+void charts_handle_data() {
+    WebHandlerContext *context = ctx();
+    if (!context || !context->server || !context->charts_history) {
+        return;
+    }
+
+    WebServer &server = *context->server;
+    const ChartsHistory &history = *context->charts_history;
+
+    const char *window_name = "3h";
+    uint16_t window_points = chart_window_points(server.arg("window"), window_name);
+
+    const char *group_name = "core";
+    const ChartMetricSpec *metrics = nullptr;
+    size_t metric_count = 0;
+    chart_group_metrics(server.arg("group"), group_name, metrics, metric_count);
+
+    uint16_t total_count = history.count();
+    uint16_t available = (total_count < window_points) ? total_count : window_points;
+    uint16_t missing_prefix = window_points - available;
+    uint16_t start_offset = total_count - available;
+
+    uint32_t latest_epoch = history.latestEpoch();
+    bool has_epoch = latest_epoch > Config::TIME_VALID_EPOCH;
+
+    ArduinoJson::JsonDocument doc;
+    doc["success"] = true;
+    doc["group"] = group_name;
+    doc["window"] = window_name;
+    doc["step_s"] = kChartStepS;
+    doc["points"] = window_points;
+    doc["available"] = available;
+
+    ArduinoJson::JsonArray timestamps = doc["timestamps"].to<ArduinoJson::JsonArray>();
+    for (uint16_t i = 0; i < window_points; ++i) {
+        if (!has_epoch) {
+            timestamps.add(nullptr);
+            continue;
+        }
+        uint32_t back_steps = static_cast<uint32_t>(window_points - 1 - i);
+        timestamps.add(latest_epoch - back_steps * kChartStepS);
+    }
+
+    ArduinoJson::JsonArray series = doc["series"].to<ArduinoJson::JsonArray>();
+    for (size_t i = 0; i < metric_count; ++i) {
+        const ChartMetricSpec &spec = metrics[i];
+        ArduinoJson::JsonObject entry = series.add<ArduinoJson::JsonObject>();
+        entry["key"] = spec.key;
+        entry["unit"] = spec.unit;
+
+        float latest_value = 0.0f;
+        if (chart_latest_metric(history, spec.metric, latest_value)) {
+            entry["latest"] = latest_value;
+        } else {
+            entry["latest"] = nullptr;
+        }
+
+        ArduinoJson::JsonArray values = entry["values"].to<ArduinoJson::JsonArray>();
+        for (uint16_t slot = 0; slot < window_points; ++slot) {
+            if (slot < missing_prefix) {
+                values.add(nullptr);
+                continue;
+            }
+
+            uint16_t offset = start_offset + (slot - missing_prefix);
+            float value = 0.0f;
+            bool valid = false;
+            if (!history.metricValueFromOldest(offset, spec.metric, value, valid) ||
+                !valid || !isfinite(value)) {
+                values.add(nullptr);
+                continue;
+            }
+            values.add(value);
+        }
+    }
+
+    String json;
+    serializeJson(doc, json);
+    server.send(200, "application/json", json);
 }
