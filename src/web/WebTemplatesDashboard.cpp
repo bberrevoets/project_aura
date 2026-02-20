@@ -294,6 +294,46 @@ const parseStateApiPayload = (payload) => {
   };
 };
 
+const formatEventAge = (ageSeconds) => {
+  if (typeof ageSeconds !== 'number' || !Number.isFinite(ageSeconds) || ageSeconds < 0) {
+    return '--';
+  }
+  if (ageSeconds < 60) return `${Math.round(ageSeconds)}s ago`;
+  if (ageSeconds < 3600) return `${Math.floor(ageSeconds / 60)}m ago`;
+  if (ageSeconds < 86400) return `${Math.floor(ageSeconds / 3600)}h ago`;
+  return `${Math.floor(ageSeconds / 86400)}d ago`;
+};
+
+const parseEventsApiPayload = (payload) => {
+  if (!payload || payload.success !== true || !Array.isArray(payload.events)) {
+    throw new Error('Invalid events payload');
+  }
+
+  const uptimeSeconds = finiteNumberOrNull(payload.uptime_s);
+  const entries = payload.events
+    .map((entry) => {
+      const tsMs = finiteNumberOrNull(entry?.ts_ms);
+      const ageSeconds =
+        uptimeSeconds !== null && tsMs !== null ? Math.max(0, uptimeSeconds - Math.floor(tsMs / 1000)) : null;
+
+      const severityRaw = stringOrNull(entry?.severity);
+      const severity =
+        severityRaw === 'critical' || severityRaw === 'danger' || severityRaw === 'warning' || severityRaw === 'info'
+          ? (severityRaw === 'critical' ? 'critical' : severityRaw)
+          : 'info';
+
+      return {
+        time: formatEventAge(ageSeconds),
+        type: stringOrNull(entry?.type) || 'SYSTEM',
+        message: stringOrNull(entry?.message) || 'Event',
+        severity,
+      };
+    })
+    .filter((entry) => entry.message.length > 0);
+
+  return entries.reverse();
+};
+
 // ============ THRESHOLDS & COLORS ============
 const thresholds = {
   // Synced to firmware thresholds (AppConfig.h + UiController.cpp)
@@ -935,6 +975,8 @@ function AuraDashboard() {
   const [chartApiLatest, setChartApiLatest] = useState({});
   const [chartApiLoading, setChartApiLoading] = useState(false);
   const [chartApiLive, setChartApiLive] = useState(false);
+  const [eventsApiAlerts, setEventsApiAlerts] = useState(null);
+  const [eventsApiLive, setEventsApiLive] = useState(false);
 
   const fallbackChartData = useMemo(() => {
     const points = fullData.length;
@@ -1011,6 +1053,38 @@ function AuraDashboard() {
       clearInterval(intervalId);
     };
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'events') return;
+
+    let active = true;
+    const loadEvents = () => {
+      fetch('/api/events', { cache: 'no-store' })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((payload) => {
+          if (!active) return;
+          const parsed = parseEventsApiPayload(payload);
+          setEventsApiAlerts(parsed);
+          setEventsApiLive(true);
+        })
+        .catch(() => {
+          if (!active) return;
+          setEventsApiLive(false);
+        });
+    };
+
+    loadEvents();
+    const intervalId = setInterval(loadEvents, 10000);
+    return () => {
+      active = false;
+      clearInterval(intervalId);
+    };
+  }, [activeTab]);
 
   const chartData = chartApiData || fallbackChartData;
   const chartLatestValues = chartApiLive ? chartApiLatest : {};
@@ -1091,11 +1165,12 @@ function AuraDashboard() {
     }
   }, [isEditingName, stateConnectivity.hostname]);
   
-  const alerts = [
+  const fallbackAlerts = [
     { time: '14:32', type: 'CO2', message: 'Threshold exceeded (>1000 ppm)', severity: 'warning' },
     { time: '12:45', type: 'VOC', message: 'Elevated index detected', severity: 'info' },
     { time: '08:15', type: 'CO2', message: 'Critical level (>1400 ppm)', severity: 'danger' },
   ];
+  const alerts = eventsApiLive && Array.isArray(eventsApiAlerts) ? eventsApiAlerts : fallbackAlerts;
 
   const tabs = [
     { id: 'sensors', label: 'Sensors' },
@@ -1297,9 +1372,16 @@ function AuraDashboard() {
         <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-3 md:gap-4 md:items-start animate-in fade-in duration-300">
           <div className="bg-gray-800 rounded-xl p-4 md:p-5 border border-gray-700/50 md:col-span-2">
              <div className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-3">System Log</div>
-             {alerts.map((alert, i) => (
-               <AlertItem key={i} {...alert} />
-             ))}
+             <div className="text-[11px] text-gray-500 mb-2">
+               {eventsApiLive ? 'Live log: /api/events' : 'Preview fallback log (API unavailable)'}
+             </div>
+             {alerts.length > 0 ? (
+               alerts.map((alert, i) => (
+                 <AlertItem key={i} {...alert} />
+               ))
+             ) : (
+               <div className="text-sm text-gray-400 py-3">No events yet.</div>
+             )}
           </div>
           
           <div className="bg-gray-800 rounded-xl p-4 md:p-5 border border-gray-700/50 md:self-start">

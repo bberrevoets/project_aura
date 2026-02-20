@@ -16,6 +16,7 @@
 #include "config/AppConfig.h"
 #include "config/AppData.h"
 #include "core/MathUtils.h"
+#include "core/Logger.h"
 #include "modules/ChartsHistory.h"
 #include "modules/DacAutoConfig.h"
 #include "modules/FanControl.h"
@@ -213,6 +214,26 @@ const char *dac_status_text(const FanControl &fan) {
         return "OFFLINE";
     }
     return fan.isRunning() ? "RUNNING" : "STOPPED";
+}
+
+const char *event_level_text(Logger::Level level) {
+    switch (level) {
+        case Logger::Error: return "E";
+        case Logger::Warn: return "W";
+        case Logger::Info: return "I";
+        case Logger::Debug: return "D";
+        default: return "?";
+    }
+}
+
+const char *event_severity_text(Logger::Level level) {
+    switch (level) {
+        case Logger::Error: return "critical";
+        case Logger::Warn: return "warning";
+        case Logger::Info: return "info";
+        case Logger::Debug: return "info";
+        default: return "info";
+    }
 }
 
 void json_set_float_or_null(ArduinoJson::JsonObject obj, const char *key, bool valid, float value) {
@@ -1088,6 +1109,37 @@ void state_handle_data() {
     system["build_date"] = __DATE__;
     system["build_time"] = __TIME__;
     system["uptime"] = format_uptime_human(uptime_s);
+
+    String json;
+    serializeJson(doc, json);
+    server.send(200, "application/json", json);
+}
+
+void events_handle_data() {
+    WebHandlerContext *context = ctx();
+    if (!context || !context->server) {
+        return;
+    }
+
+    WebServer &server = *context->server;
+    Logger::RecentEntry entries[48];
+    const size_t count = Logger::copyRecent(entries, sizeof(entries) / sizeof(entries[0]));
+
+    ArduinoJson::JsonDocument doc;
+    doc["success"] = true;
+    doc["count"] = static_cast<uint32_t>(count);
+    doc["uptime_s"] = millis() / 1000UL;
+
+    ArduinoJson::JsonArray events = doc["events"].to<ArduinoJson::JsonArray>();
+    for (size_t i = 0; i < count; ++i) {
+        const Logger::RecentEntry &entry = entries[i];
+        ArduinoJson::JsonObject e = events.add<ArduinoJson::JsonObject>();
+        e["ts_ms"] = entry.ms;
+        e["level"] = event_level_text(entry.level);
+        e["severity"] = event_severity_text(entry.level);
+        e["type"] = entry.tag[0] ? entry.tag : "SYSTEM";
+        e["message"] = entry.message[0] ? entry.message : "Event";
+    }
 
     String json;
     serializeJson(doc, json);

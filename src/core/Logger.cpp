@@ -7,6 +7,7 @@
 #include "core/Logger.h"
 
 #include <stdio.h>
+#include <string.h>
 
 namespace {
 constexpr size_t kLogBufferSize = 256;
@@ -14,6 +15,9 @@ constexpr size_t kLogBufferSize = 256;
 
 HardwareSerial *Logger::serial_ = &Serial;
 Logger::Level Logger::level_ = Logger::Info;
+Logger::RecentEntry Logger::recent_[Logger::kRecentCapacity];
+size_t Logger::recent_head_ = 0;
+size_t Logger::recent_count_ = 0;
 
 void Logger::begin(HardwareSerial &serial, Level level) {
     serial_ = &serial;
@@ -51,21 +55,64 @@ void Logger::log(Level level, const char *tag, const char *fmt, ...) {
 }
 
 void Logger::vlog(Level level, const char *tag, const char *fmt, va_list args) {
-    if (level > level_ || serial_ == nullptr) {
+    if (level > level_) {
         return;
     }
 
     char buffer[kLogBufferSize];
     vsnprintf(buffer, sizeof(buffer), fmt, args);
 
-    serial_->print('[');
-    serial_->print(levelName(level));
-    serial_->print(']');
-    if (tag && tag[0] != '\0') {
+    if (serial_) {
         serial_->print('[');
-        serial_->print(tag);
+        serial_->print(levelName(level));
         serial_->print(']');
+        if (tag && tag[0] != '\0') {
+            serial_->print('[');
+            serial_->print(tag);
+            serial_->print(']');
+        }
+        serial_->print(' ');
+        serial_->println(buffer);
     }
-    serial_->print(' ');
-    serial_->println(buffer);
+
+    storeRecent(level, tag, buffer);
+}
+
+void Logger::storeRecent(Level level, const char *tag, const char *message) {
+    RecentEntry &entry = recent_[recent_head_];
+#if defined(ARDUINO)
+    entry.ms = millis();
+#else
+    entry.ms = 0;
+#endif
+    entry.level = level;
+    entry.tag[0] = '\0';
+    entry.message[0] = '\0';
+
+    if (tag) {
+        strncpy(entry.tag, tag, sizeof(entry.tag) - 1);
+        entry.tag[sizeof(entry.tag) - 1] = '\0';
+    }
+    if (message) {
+        strncpy(entry.message, message, sizeof(entry.message) - 1);
+        entry.message[sizeof(entry.message) - 1] = '\0';
+    }
+
+    recent_head_ = (recent_head_ + 1) % kRecentCapacity;
+    if (recent_count_ < kRecentCapacity) {
+        recent_count_++;
+    }
+}
+
+size_t Logger::copyRecent(RecentEntry *out, size_t max_entries) {
+    if (!out || max_entries == 0 || recent_count_ == 0) {
+        return 0;
+    }
+
+    const size_t to_copy = (recent_count_ < max_entries) ? recent_count_ : max_entries;
+    const size_t start = (recent_head_ + kRecentCapacity - to_copy) % kRecentCapacity;
+    for (size_t i = 0; i < to_copy; ++i) {
+        out[i] = recent_[(start + i) % kRecentCapacity];
+    }
+    return to_copy;
 }

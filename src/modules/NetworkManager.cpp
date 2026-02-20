@@ -186,6 +186,7 @@ void AuraNetworkManager::registerServerRoutes() {
     server_.on("/dac/auto", HTTP_POST, dac_handle_auto);
     server_.on("/api/charts", HTTP_GET, charts_handle_data);
     server_.on("/api/state", HTTP_GET, state_handle_data);
+    server_.on("/api/events", HTTP_GET, events_handle_data);
     server_.onNotFound(wifi_handle_not_found);
     server_routes_registered_ = true;
 }
