@@ -14,7 +14,9 @@ const char kDashboardPageTemplate[] PROGMEM = R"HTML_DASH(
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Aura Web Page Preview</title>
+  <title>Aura Web Page</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxNjkzLjMyIDE2OTMuMzInPjxwYXRoIGZpbGw9JyNFNkI4NzMnIGZpbGwtcnVsZT0nZXZlbm9kZCcgY2xpcC1ydWxlPSdldmVub2RkJyBkPSdNODQ2LjY2IDE2NDIuNTNjNDM5LjU1LDAgNzk1Ljg3LC0zNTYuMzIgNzk1Ljg3LC03OTUuODcgMCwtNDM5LjU1IC0zNTYuMzIsLTc5NS44NyAtNzk1Ljg3LC03OTUuODcgLTQzOS41NSwwIC03OTUuODcsMzU2LjMyIC03OTUuODcsNzk1Ljg3IDAsNDM5LjU1IDM1Ni4zMiw3OTUuODcgNzk1Ljg3LDc5NS44N3ptLTQxOS4zMiAtMTM3MC4yOGMzMjcuMTcsLTYwLjE4IDY3NS4xNCwxNTAuNDQgNjkwLjYzLDUxMi44IDU2LjE2LC0xODAuOSAtMTEuMTksLTM3My44MiAtMTQzLjQxLC01MDMuNTIgLTY2LjY4LC02NS40IC0xNDkuNjgsLTExNC4zNiAtMjQxLjE0LC0xMzcuMDcgLTExMy4xNywxOC4xMSAtMjE3LjQsNjIuOTQgLTMwNi4wOCwxMjcuNzl6bTU4Ny44NyAzNTMuMjZjLTcyLjgsLTE3NC42NCAtMjQ5LjE4LC0yNzkuNTUgLTQzMy42OCwtMjkzLjkxIC05My4xNiwtNy4yNSAtMTg4LjA3LDguNDQgLTI3Mi40OCw0OS41NCAtNzIuNSw4My42NSAtMTI1LjgsMTg0LjM3IC0xNTMuMDUsMjk1LjM2IDIxMi4wOCwtMjU2LjcxIDYxNC4yOSwtMzE5LjMzIDg1OS4yMSwtNTAuOTl6bS0xMjAuNiAtNDg4LjQ1YzEyOC42OCw3My4xOCAyMzAuMDQsMTk0IDI3OSwzMzMuMjQgNjAuODgsMTczLjE0IDM1LjAyLDM1NC44MiAtNzkuNjgsNTAzLjcxIDE1OS4xNywtMTAyLjIzIDIzMS44NiwtMjkzLjk1IDIxMy45OCwtNDc4LjEgLTkuMDIsLTkyLjkgLTQxLjEsLTE4My43IC05Ni41MSwtMjU5Ljg3IC05My43NSwtNTYuMTQgLTIwMS41MSwtOTEuMyAtMzE2Ljc5LC05OC45OHptNDQ0LjkzIDE5Ni45N2MxMTUuODMsMzEyLjA3IC0zMC44NCw2OTEuMzEgLTM4NS41NSw3NjkuMTUgMTg3LjU3LDI0LjE0IDM2Ni43MSwtNzYuMDkgNDcxLjM0LC0yMjguNjEgNTIuOTQsLTc3LjE3IDg2LjgsLTE2Ny40NSA5My4yOCwtMjYxLjM1IC0zNy4xNiwtMTA2Ljk4IC05OS4xNiwtMjAyLjMyIC0xNzkuMDcsLTI3OS4xOXptMjE0LjI3IDQzNi41N2MtMTExLjU0LDMxMy41MiAtNDY3LjgzLDUwOS43MiAtNzg5LjQ0LDM0MS44MSAxMjguMjQsMTM4Ljc3IDMyOS44MiwxNzcuMSA1MDcuNzcsMTI3LjU5IDkwLjAzLC0yNS4wNSAxNzQuMDEsLTcyLjUzIDIzOS40NCwtMTQwLjUxIDI5LjksLTc4LjU1IDQ2LjI4LC0xNjMuNzggNDYuMjgsLTI1Mi44MyAwLC0yNS43IC0xLjM5LC01MS4wNyAtNC4wNSwtNzYuMDZ6bS0xMTYuNTcgNDcyLjM4Yy0yODcuMTIsMTY4LjIzIC02ODYuMjIsODkuOTYgLTgyNC41NCwtMjQ1Ljk4IDguNzEsMTg5LjA4IDEzOC40NSwzNDcuNzUgMzA2LjkzLDQyNC4zNiA4NS4xMywzOC43MSAxNzkuODQsNTYuMzggMjczLjQzLDQ2LjUzIDk4LjAzLC01NC43OCAxODEuNzUsLTEzMi4wOSAyNDQuMTgsLTIyNC45MXptLTM5Mi42NSAyODYuOTRjLTMyOC4xLC01NS4yOCAtNTgzLjU4LC0zNzIuMzUgLTQ3My44NywtNzE4LjM5IC0xMTQuNzgsMTUwLjY2IC0xMTcuNCwzNTUuNDIgLTM3LjU5LDUyMi40IDQwLjMxLDg0LjMzIDEwMS41NCwxNTguNzUgMTc5LjY4LDIxMS4zNCA0My4zNSw4LjI2IDg4LjEsMTIuNTkgMTMzLjg1LDEyLjU5IDY4LjY5LDAgMTM1LjEsLTkuNzcgMTk3LjkzLC0yNy45NHptLTQ4NS4zOCAtMzIuNTdjLTIxNS44MSwtMjUzLjM0IC0yMDgsLTY2MC4yOSA5OC42NCwtODU0Ljg4IC0xODQuNjksNDEuNjUgLTMxOC40MywxOTYuNzIgLTM2NC41OCwzNzUuODUgLTIzLjI5LDkwLjQgLTI0LjIsMTg2LjczIDEuODQsMjc3LjMyIDcwLjQ1LDg2LjQ0IDE2MC44MSwxNTYuMDEgMjY0LjEsMjAxLjcxem0tMzUxLjA0IC0zMzcuMTZjLTIuMTgsLTMzMy4wNiAyNjUuMzYsLTYzOS43MSA2MjUuNDgsLTU5MS4yNiAtMTY4LjE0LC04Ny4wMyAtMzcwLjYyLC01NC4wNCAtNTIxLjM0LDUzLjY2IC01OS43Miw0Mi42OCAtMTc2Ljg1LDE2NS4xNiAtMTc2Ljg1LDIyNC4wNyAwLDExMi41MyAyNi4xOCwyMTguOTQgNzIuNzEsMzEzLjUzem02MzguNDkgLTEyMy4yM2MxMDUuMSwwIDE5MC4zLC04NS4yIDE5MC4zLC0xOTAuMyAwLC0xMDUuMSAtODUuMiwtMTkwLjMgLTE5MC4zLC0xOTAuMyAtMTA1LjEsMCAtMTkwLjMsODUuMiAtMTkwLjMsMTkwLjMgMCwxMDUuMSA4NS4yLDE5MC4zIDE5MC4zLDE5MC4zeicvPjwvc3ZnPg==" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxNjkzLjMyIDE2OTMuMzInPjxwYXRoIGZpbGw9JyNFNkI4NzMnIGZpbGwtcnVsZT0nZXZlbm9kZCcgY2xpcC1ydWxlPSdldmVub2RkJyBkPSdNODQ2LjY2IDE2NDIuNTNjNDM5LjU1LDAgNzk1Ljg3LC0zNTYuMzIgNzk1Ljg3LC03OTUuODcgMCwtNDM5LjU1IC0zNTYuMzIsLTc5NS44NyAtNzk1Ljg3LC03OTUuODcgLTQzOS41NSwwIC03OTUuODcsMzU2LjMyIC03OTUuODcsNzk1Ljg3IDAsNDM5LjU1IDM1Ni4zMiw3OTUuODcgNzk1Ljg3LDc5NS44N3ptLTQxOS4zMiAtMTM3MC4yOGMzMjcuMTcsLTYwLjE4IDY3NS4xNCwxNTAuNDQgNjkwLjYzLDUxMi44IDU2LjE2LC0xODAuOSAtMTEuMTksLTM3My44MiAtMTQzLjQxLC01MDMuNTIgLTY2LjY4LC02NS40IC0xNDkuNjgsLTExNC4zNiAtMjQxLjE0LC0xMzcuMDcgLTExMy4xNywxOC4xMSAtMjE3LjQsNjIuOTQgLTMwNi4wOCwxMjcuNzl6bTU4Ny44NyAzNTMuMjZjLTcyLjgsLTE3NC42NCAtMjQ5LjE4LC0yNzkuNTUgLTQzMy42OCwtMjkzLjkxIC05My4xNiwtNy4yNSAtMTg4LjA3LDguNDQgLTI3Mi40OCw0OS41NCAtNzIuNSw4My42NSAtMTI1LjgsMTg0LjM3IC0xNTMuMDUsMjk1LjM2IDIxMi4wOCwtMjU2LjcxIDYxNC4yOSwtMzE5LjMzIDg1OS4yMSwtNTAuOTl6bS0xMjAuNiAtNDg4LjQ1YzEyOC42OCw3My4xOCAyMzAuMDQsMTk0IDI3OSwzMzMuMjQgNjAuODgsMTczLjE0IDM1LjAyLDM1NC44MiAtNzkuNjgsNTAzLjcxIDE1OS4xNywtMTAyLjIzIDIzMS44NiwtMjkzLjk1IDIxMy45OCwtNDc4LjEgLTkuMDIsLTkyLjkgLTQxLjEsLTE4My43IC05Ni41MSwtMjU5Ljg3IC05My43NSwtNTYuMTQgLTIwMS41MSwtOTEuMyAtMzE2Ljc5LC05OC45OHptNDQ0LjkzIDE5Ni45N2MxMTUuODMsMzEyLjA3IC0zMC44NCw2OTEuMzEgLTM4NS41NSw3NjkuMTUgMTg3LjU3LDI0LjE0IDM2Ni43MSwtNzYuMDkgNDcxLjM0LC0yMjguNjEgNTIuOTQsLTc3LjE3IDg2LjgsLTE2Ny40NSA5My4yOCwtMjYxLjM1IC0zNy4xNiwtMTA2Ljk4IC05OS4xNiwtMjAyLjMyIC0xNzkuMDcsLTI3OS4xOXptMjE0LjI3IDQzNi41N2MtMTExLjU0LDMxMy41MiAtNDY3LjgzLDUwOS43MiAtNzg5LjQ0LDM0MS44MSAxMjguMjQsMTM4Ljc3IDMyOS44MiwxNzcuMSA1MDcuNzcsMTI3LjU5IDkwLjAzLC0yNS4wNSAxNzQuMDEsLTcyLjUzIDIzOS40NCwtMTQwLjUxIDI5LjksLTc4LjU1IDQ2LjI4LC0xNjMuNzggNDYuMjgsLTI1Mi44MyAwLC0yNS43IC0xLjM5LC01MS4wNyAtNC4wNSwtNzYuMDZ6bS0xMTYuNTcgNDcyLjM4Yy0yODcuMTIsMTY4LjIzIC02ODYuMjIsODkuOTYgLTgyNC41NCwtMjQ1Ljk4IDguNzEsMTg5LjA4IDEzOC40NSwzNDcuNzUgMzA2LjkzLDQyNC4zNiA4NS4xMywzOC43MSAxNzkuODQsNTYuMzggMjczLjQzLDQ2LjUzIDk4LjAzLC01NC43OCAxODEuNzUsLTEzMi4wOSAyNDQuMTgsLTIyNC45MXptLTM5Mi42NSAyODYuOTRjLTMyOC4xLC01NS4yOCAtNTgzLjU4LC0zNzIuMzUgLTQ3My44NywtNzE4LjM5IC0xMTQuNzgsMTUwLjY2IC0xMTcuNCwzNTUuNDIgLTM3LjU5LDUyMi40IDQwLjMxLDg0LjMzIDEwMS41NCwxNTguNzUgMTc5LjY4LDIxMS4zNCA0My4zNSw4LjI2IDg4LjEsMTIuNTkgMTMzLjg1LDEyLjU5IDY4LjY5LDAgMTM1LjEsLTkuNzcgMTk3LjkzLC0yNy45NHptLTQ4NS4zOCAtMzIuNTdjLTIxNS44MSwtMjUzLjM0IC0yMDgsLTY2MC4yOSA5OC42NCwtODU0Ljg4IC0xODQuNjksNDEuNjUgLTMxOC40MywxOTYuNzIgLTM2NC41OCwzNzUuODUgLTIzLjI5LDkwLjQgLTI0LjIsMTg2LjczIDEuODQsMjc3LjMyIDcwLjQ1LDg2LjQ0IDE2MC44MSwxNTYuMDEgMjY0LjEsMjAxLjcxem0tMzUxLjA0IC0zMzcuMTZjLTIuMTgsLTMzMy4wNiAyNjUuMzYsLTYzOS43MSA2MjUuNDgsLTU5MS4yNiAtMTY4LjE0LC04Ny4wMyAtMzcwLjYyLC01NC4wNCAtNTIxLjM0LDUzLjY2IC01OS43Miw0Mi42OCAtMTc2Ljg1LDE2NS4xNiAtMTc2Ljg1LDIyNC4wNyAwLDExMi41MyAyNi4xOCwyMTguOTQgNzIuNzEsMzEzLjUzem02MzguNDkgLTEyMy4yM2MxMDUuMSwwIDE5MC4zLC04NS4yIDE5MC4zLC0xOTAuMyAwLC0xMDUuMSAtODUuMiwtMTkwLjMgLTE5MC4zLC0xOTAuMyAtMTA1LjEsMCAtMTkwLjMsODUuMiAtMTkwLjMsMTkwLjMgMCwxMDUuMSA4NS4yLDE5MC4zIDE5MC4zLDE5MC4zeicvPjwvc3ZnPg==" />
   <script>
     window.__auraDepFailed = [];
     window.__auraDepFail = function (name, src) {
@@ -120,111 +122,11 @@ const svgIcon = (draw) => ({ size = 14, className = "" }) => (
 
 // Icon fallbacks for no-build local preview (replace text glyph stubs).
 const Moon = svgIcon(<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 1 0 9.8 9.8z" />);
-const Bell = svgIcon(<><path d="M18 15.5V11a6 6 0 0 0-12 0v4.5L4.5 17h15L18 15.5z" /><path d="M10 18a2 2 0 0 0 4 0" /></>);
 const Sun = svgIcon(<><circle cx="12" cy="12" r="4" /><path d="M12 2v2.2M12 19.8V22M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2 12h2.2M19.8 12H22M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" /></>);
 const RotateCw = svgIcon(<><path d="M21 2v6h-6" /><path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M3 22v-6h6" /><path d="M21 12a9 9 0 0 1-15 6.7L3 16" /></>);
-const Plus = svgIcon(<path d="M12 5v14M5 12h14" />);
-const Minus = svgIcon(<path d="M5 12h14" />);
 const Pencil = svgIcon(<><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></>);
 const Check = svgIcon(<path d="M20 6 9 17l-5-5" />);
 const X = svgIcon(<path d="m6 6 12 12M18 6 6 18" />);
-
-// ============ VISUAL PLACEHOLDERS (NO SENSOR LOGIC) ============
-const SENSOR_PLACEHOLDER_ANCHORS = [
-  { time: '00:00', co2: 640, temp: 21.3, rh: 52, pm05: 92, pm1: 4.2, pm25: 6.4, pm4: 7.6, pm10: 9.3, voc: 118, nox: 22, pressure: 1015.6, hcho: 18, co: 0.5, mold: 2.8 },
-  { time: '02:00', co2: 660, temp: 21.1, rh: 53, pm05: 88, pm1: 4.4, pm25: 6.8, pm4: 8.1, pm10: 9.8, voc: 122, nox: 23, pressure: 1015.4, hcho: 18, co: 0.5, mold: 2.9 },
-  { time: '04:00', co2: 700, temp: 20.9, rh: 54, pm05: 95, pm1: 4.7, pm25: 7.2, pm4: 8.6, pm10: 10.2, voc: 126, nox: 24, pressure: 1015.1, hcho: 19, co: 0.6, mold: 3.0 },
-  { time: '06:00', co2: 760, temp: 21.0, rh: 55, pm05: 104, pm1: 5.1, pm25: 7.8, pm4: 9.2, pm10: 10.9, voc: 132, nox: 26, pressure: 1014.8, hcho: 20, co: 0.6, mold: 3.2 },
-  { time: '08:00', co2: 820, temp: 21.7, rh: 50, pm05: 126, pm1: 5.8, pm25: 8.9, pm4: 10.3, pm10: 12.1, voc: 148, nox: 34, pressure: 1014.3, hcho: 22, co: 0.7, mold: 3.4 },
-  { time: '10:00', co2: 870, temp: 22.4, rh: 47, pm05: 148, pm1: 6.4, pm25: 10.2, pm4: 11.8, pm10: 13.6, voc: 166, nox: 41, pressure: 1013.9, hcho: 24, co: 0.8, mold: 3.7 },
-  { time: '12:00', co2: 940, temp: 23.1, rh: 45, pm05: 196, pm1: 8.1, pm25: 13.8, pm4: 15.4, pm10: 18.9, voc: 202, nox: 68, pressure: 1013.5, hcho: 31, co: 1.2, mold: 4.2 },
-  { time: '14:00', co2: 980, temp: 23.4, rh: 44, pm05: 238, pm1: 9.0, pm25: 15.5, pm4: 17.2, pm10: 20.4, voc: 224, nox: 75, pressure: 1013.2, hcho: 34, co: 1.4, mold: 4.4 },
-  { time: '16:00', co2: 930, temp: 23.0, rh: 46, pm05: 176, pm1: 7.4, pm25: 12.4, pm4: 14.1, pm10: 16.8, voc: 190, nox: 56, pressure: 1013.0, hcho: 29, co: 1.0, mold: 4.1 },
-  { time: '18:00', co2: 890, temp: 22.6, rh: 48, pm05: 152, pm1: 6.7, pm25: 10.8, pm4: 12.5, pm10: 14.9, voc: 170, nox: 47, pressure: 1012.8, hcho: 25, co: 0.8, mold: 3.8 },
-  { time: '20:00', co2: 860, temp: 22.1, rh: 50, pm05: 136, pm1: 6.0, pm25: 9.7, pm4: 11.1, pm10: 13.2, voc: 158, nox: 39, pressure: 1012.6, hcho: 23, co: 0.7, mold: 3.5 },
-  { time: '22:00', co2: 830, temp: 21.8, rh: 51, pm05: 120, pm1: 5.4, pm25: 8.6, pm4: 9.9, pm10: 11.8, voc: 146, nox: 32, pressure: 1012.4, hcho: 21, co: 0.6, mold: 3.3 },
-];
-
-const SENSOR_FIELDS = ['co2', 'temp', 'rh', 'pm05', 'pm1', 'pm25', 'pm4', 'pm10', 'voc', 'nox', 'pressure', 'hcho', 'co', 'mold'];
-const SENSOR_HISTORY_STEP_MIN = 5;
-const SENSOR_NON_NEGATIVE_FIELDS = new Set(['co2', 'rh', 'pm05', 'pm1', 'pm25', 'pm4', 'pm10', 'voc', 'nox', 'hcho', 'co', 'mold']);
-const SENSOR_WIGGLE = {
-  co2: 6.0,
-  temp: 0.08,
-  rh: 0.35,
-  pm05: 6.0,
-  pm1: 0.12,
-  pm25: 0.18,
-  pm4: 0.22,
-  pm10: 0.28,
-  voc: 3.0,
-  nox: 1.6,
-  pressure: 0.05,
-  hcho: 0.35,
-  co: 0.03,
-  mold: 0.05,
-};
-
-const hhmmToMinutes = (hhmm) => {
-  const [hh, mm] = hhmm.split(':').map(Number);
-  return hh * 60 + mm;
-};
-
-const minutesToHhmm = (minutes) => {
-  const normalized = ((minutes % 1440) + 1440) % 1440;
-  const hh = Math.floor(normalized / 60);
-  const mm = normalized % 60;
-  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
-};
-
-const buildFiveMinuteHistory = (anchors) => {
-  if (!anchors || anchors.length < 2) return anchors || [];
-
-  const wrapAnchor = { ...anchors[0], time: '24:00' };
-  const cycle = [...anchors, wrapAnchor];
-  const points = [];
-
-  for (let i = 0; i < cycle.length - 1; i++) {
-    const from = cycle[i];
-    const to = cycle[i + 1];
-    const fromMin = hhmmToMinutes(from.time);
-    let toMin = hhmmToMinutes(to.time);
-    if (toMin <= fromMin) toMin += 1440;
-    const segmentMinutes = toMin - fromMin;
-
-    for (let offset = 0; offset < segmentMinutes; offset += SENSOR_HISTORY_STEP_MIN) {
-      const t = offset / segmentMinutes;
-      const eased = (1 - Math.cos(Math.PI * t)) / 2; // Smoother than linear
-      const envelope = Math.sin(Math.PI * t); // Keep wiggle at zero on anchors
-      const point = { time: minutesToHhmm(fromMin + offset) };
-
-      SENSOR_FIELDS.forEach((field, fieldIndex) => {
-        const a = from[field];
-        const b = to[field];
-        const base = a + (b - a) * eased;
-        const phase = (fieldIndex + 1) * 0.9;
-        const wiggle = Math.sin(((fromMin + offset) / 42) + phase) * (SENSOR_WIGGLE[field] || 0) * envelope;
-        let value = base + wiggle;
-        if (SENSOR_NON_NEGATIVE_FIELDS.has(field) && value < 0) value = 0;
-        point[field] = Number(value.toFixed(2));
-      });
-
-      points.push(point);
-    }
-  }
-
-  return points;
-};
-
-const SENSOR_PLACEHOLDER_HISTORY = buildFiveMinuteHistory(SENSOR_PLACEHOLDER_ANCHORS);
-
-const SENSOR_PLACEHOLDER_DERIVED = {
-  ah: 9.4,
-  dewPoint: 11.2,
-  delta3h: -0.4,
-  delta24h: -3.2,
-  uptime: '3d 12h 45m',
-};
 
 const PREVIEW_HOSTNAME = (() => {
   const rawHost = (typeof window !== 'undefined' && window.location && window.location.hostname)
@@ -312,6 +214,42 @@ const finiteNumberOrNull = (value) =>
 const stringOrNull = (value) =>
   typeof value === 'string' && value.trim().length > 0 ? value : null;
 
+const boolOrNull = (value) =>
+  typeof value === 'boolean' ? value : null;
+
+const parseSettingsPayload = (settings) => ({
+  nightMode: boolOrNull(settings?.night_mode),
+  nightModeLocked: boolOrNull(settings?.night_mode_locked),
+  backlight: boolOrNull(settings?.backlight_on),
+  tempUnit: boolOrNull(settings?.units_c) === null ? null : (settings.units_c ? 'c' : 'f'),
+  tempOffset: finiteNumberOrNull(settings?.temp_offset),
+  humOffset: finiteNumberOrNull(settings?.hum_offset),
+});
+
+const DEFAULT_WEB_SETTINGS = {
+  nightMode: false,
+  nightModeLocked: false,
+  backlight: true,
+  tempUnit: 'c',
+  tempOffset: -1.2,
+  humOffset: 2,
+};
+
+const settingsPatchFromParsed = (parsed) => {
+  const patch = {};
+  if (typeof parsed?.nightMode === 'boolean') patch.nightMode = parsed.nightMode;
+  if (typeof parsed?.nightModeLocked === 'boolean') patch.nightModeLocked = parsed.nightModeLocked;
+  if (typeof parsed?.backlight === 'boolean') patch.backlight = parsed.backlight;
+  if (parsed?.tempUnit === 'c' || parsed?.tempUnit === 'f') patch.tempUnit = parsed.tempUnit;
+  if (typeof parsed?.tempOffset === 'number' && Number.isFinite(parsed.tempOffset)) {
+    patch.tempOffset = Number(parsed.tempOffset.toFixed(1));
+  }
+  if (typeof parsed?.humOffset === 'number' && Number.isFinite(parsed.humOffset)) {
+    patch.humOffset = Number(parsed.humOffset.toFixed(0));
+  }
+  return patch;
+};
+
 const parseStateApiPayload = (payload) => {
   if (!payload || payload.success !== true) {
     throw new Error('Invalid state payload');
@@ -321,6 +259,7 @@ const parseStateApiPayload = (payload) => {
   const derived = payload.derived || {};
   const network = payload.network || {};
   const system = payload.system || {};
+  const settings = payload.settings || {};
 
   return {
     current: {
@@ -359,7 +298,9 @@ const parseStateApiPayload = (payload) => {
       buildDate: stringOrNull(system.build_date),
       buildTime: stringOrNull(system.build_time),
       uptime: stringOrNull(system.uptime),
+      dacAvailable: typeof system.dac_available === 'boolean' ? system.dac_available : null,
     },
+    settings: parseSettingsPayload(settings),
   };
 };
 
@@ -430,7 +371,8 @@ const getStatus = (value, threshold) => {
     // Range-based (temp, humidity)
     if (value >= threshold.good[0] && value <= threshold.good[1]) return 'good';
     if (value >= threshold.moderate[0] && value <= threshold.moderate[1]) return 'moderate';
-    return 'bad';
+    if (value >= threshold.bad[0] && value <= threshold.bad[1]) return 'bad';
+    return 'critical';
   } else {
     // Upper limit based
     if (value <= threshold.good) return 'good';
@@ -528,6 +470,24 @@ const StatusPill = ({ status, compact = false }) => {
 
 const isFiniteNumber = (v) => typeof v === 'number' && Number.isFinite(v);
 const clampNumber = (value, min, max) => Math.max(min, Math.min(max, value));
+const tempOffsetCToDisplay = (offsetC, tempUnit) =>
+  tempUnit === 'f' ? (offsetC * 9) / 5 : offsetC;
+const tempOffsetDisplayToC = (offsetDisplay, tempUnit) =>
+  tempUnit === 'f' ? (offsetDisplay * 5) / 9 : offsetDisplay;
+
+const metricStatus = (value, threshold, { round = false } = {}) => {
+  if (!isFiniteNumber(value)) return null;
+  const normalized = round ? Math.round(value) : value;
+  return getStatus(normalized, threshold);
+};
+
+const formatMetricValue = (value, decimals = 1) =>
+  isFiniteNumber(value) ? Number(value).toFixed(decimals) : 'N/A';
+
+const formatSignedMetricValue = (value, decimals = 1) => {
+  if (!isFiniteNumber(value)) return 'N/A';
+  return `${value > 0 ? '+' : ''}${Number(value).toFixed(decimals)}`;
+};
 
 const splitSeriesSegments = (points) => {
   const segments = [];
@@ -819,31 +779,46 @@ const HeroMetric = ({ value, status, history = [] }) => {
     bad: 'Open windows or increase airflow now.',
     critical: 'Poor air quality. Ventilate immediately.',
   };
+  const safeValue = isFiniteNumber(value) ? value : null;
+  const accentColor = statusColorOf(status);
+  const adviceText = advice[status] || 'No live CO2 data.';
   const co2SeriesAll = history.length
     ? history.map((point) => ({ time: point.time, co2: isFiniteNumber(point.co2) ? point.co2 : null }))
-    : [{ time: '--:--', co2: value }];
+    : [{ time: '--:--', co2: safeValue }];
 
   const co2SeriesWindow = co2SeriesAll.slice(Math.max(0, co2SeriesAll.length - 36)); // 3h, 5-minute step
   const co2Series = [...co2SeriesWindow];
   const lastCo2Point = co2Series[co2Series.length - 1];
-  if (!lastCo2Point || !isFiniteNumber(lastCo2Point.co2) || Math.abs(lastCo2Point.co2 - value) > 0.01) {
+  if (
+    isFiniteNumber(safeValue) &&
+    (!lastCo2Point || !isFiniteNumber(lastCo2Point.co2) || Math.abs(lastCo2Point.co2 - safeValue) > 0.01)
+  ) {
     co2Series.push({
       time: lastCo2Point?.time || '--:--',
-      co2: value,
+      co2: safeValue,
     });
   }
 
   const co2ValidPoints = co2Series.filter((point) => isFiniteNumber(point.co2));
-  const co2Stats = co2ValidPoints.reduce(
-    (acc, point) => ({
-      min: Math.min(acc.min, Number(point.co2)),
-      max: Math.max(acc.max, Number(point.co2)),
-    }),
-    { min: value, max: value }
-  );
+  const co2Stats = co2ValidPoints.length
+    ? co2ValidPoints.reduce(
+        (acc, point) => ({
+          min: Math.min(acc.min, Number(point.co2)),
+          max: Math.max(acc.max, Number(point.co2)),
+        }),
+        { min: Number(co2ValidPoints[0].co2), max: Number(co2ValidPoints[0].co2) }
+      )
+    : null;
   const co2BasePoint = co2ValidPoints.length > 0 ? co2ValidPoints[0] : null;
-  const delta3h = co2BasePoint ? value - Number(co2BasePoint.co2) : 0;
-  const deltaColorClass = delta3h > 20 ? 'text-orange-300' : delta3h < -20 ? 'text-cyan-300' : 'text-gray-300';
+  const delta3h = co2BasePoint && isFiniteNumber(safeValue) ? safeValue - Number(co2BasePoint.co2) : null;
+  const deltaColorClass = !isFiniteNumber(delta3h)
+    ? 'text-gray-400'
+    : delta3h > 20
+      ? 'text-orange-300'
+      : delta3h < -20
+        ? 'text-cyan-300'
+        : 'text-gray-300';
+  const progressWidth = isFiniteNumber(safeValue) ? Math.min((safeValue / thresholds.co2.bad) * 100, 100) : 0;
 
   return (
     <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-5 md:p-7 border border-gray-700/60 shadow-xl h-full flex flex-col">
@@ -851,7 +826,7 @@ const HeroMetric = ({ value, status, history = [] }) => {
         <div>
           <div className="text-[12px] md:text-sm uppercase tracking-wider text-gray-400 font-semibold">CO2 Level</div>
           <div className="mt-3 flex items-end gap-2">
-            <span className="text-6xl md:text-7xl font-semibold leading-none" style={{ color: statusColors[status] }}>{value.toFixed(0)}</span>
+            <span className="text-6xl md:text-7xl font-semibold leading-none" style={{ color: accentColor }}>{formatMetricValue(safeValue, 0)}</span>
             <span className="text-base md:text-lg text-gray-400 pb-1">ppm</span>
           </div>
         </div>
@@ -860,30 +835,30 @@ const HeroMetric = ({ value, status, history = [] }) => {
       <div className="mt-4 h-2.5 bg-gray-700/80 rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${Math.min((value / thresholds.co2.bad) * 100, 100)}%`, backgroundColor: statusColors[status] }}
+          style={{ width: `${progressWidth}%`, backgroundColor: accentColor }}
         />
       </div>
-      <div className="mt-3 text-sm md:text-base text-gray-300">{advice[status]}</div>
+      <div className="mt-3 text-sm md:text-base text-gray-300">{adviceText}</div>
 
       <div className="mt-5 pt-4 border-t border-gray-700/60">
         <div className="flex items-center justify-between">
           <span className="text-[10px] md:text-xs uppercase tracking-wide text-gray-400 font-semibold">3h Trend</span>
           <span className={`text-xs md:text-sm font-semibold ${deltaColorClass}`}>
-            {delta3h > 0 ? '+' : ''}{delta3h.toFixed(0)} ppm
+            {isFiniteNumber(delta3h) ? `${delta3h > 0 ? '+' : ''}${delta3h.toFixed(0)} ppm` : 'N/A'}
           </span>
         </div>
         <div className="mt-2 h-20 md:h-24">
           <SvgTrendChart
             data={co2Series}
             lines={[{ key: 'co2' }]}
-            lineColors={[statusColors[status]]}
+            lineColors={[accentColor]}
             showGrid={true}
             unit="ppm"
           />
         </div>
         <div className="mt-2 flex items-center justify-between text-[11px] md:text-xs text-gray-400">
-          <span>min {co2Stats.min.toFixed(0)} ppm</span>
-          <span>max {co2Stats.max.toFixed(0)} ppm</span>
+          <span>min {formatMinMaxValue(co2Stats?.min, 'ppm')}</span>
+          <span>max {formatMinMaxValue(co2Stats?.max, 'ppm')}</span>
         </div>
       </div>
     </div>
@@ -906,12 +881,15 @@ const ClimateOverview = ({
   pressureTrend24h,
 }) => {
   const statusRank = { good: 0, moderate: 1, bad: 2, critical: 3 };
-  const climateStatus = [tempStatus, rhStatus, moldStatus].reduce(
-    (worst, status) => (statusRank[status] > statusRank[worst] ? status : worst),
-    'good'
+  const climateCandidates = [tempStatus, rhStatus, moldStatus].filter((entry) =>
+    Object.prototype.hasOwnProperty.call(statusRank, entry)
   );
-  const dewPointStatus = getStatus(dewPoint, thresholds.dewPoint);
-  const ahStatus = getStatus(ah, thresholds.ah);
+  const climateStatus = climateCandidates.length
+    ? climateCandidates.reduce((worst, entry) => (statusRank[entry] > statusRank[worst] ? entry : worst), climateCandidates[0])
+    : null;
+  // Device UI colors dew point by rounded value (roundf), mirror it for exact match.
+  const dewPointStatus = metricStatus(dewPoint, thresholds.dewPoint, { round: true });
+  const ahStatus = metricStatus(ah, thresholds.ah);
   const miniCardClass = "rounded-xl bg-gray-700/30 border border-gray-600/40 p-3 md:p-4";
   const climateLabelClass = "text-[10px] md:text-[11px] uppercase tracking-[0.08em] text-gray-400 font-semibold whitespace-nowrap";
   const unitClass = "text-sm md:text-base text-gray-300 leading-none self-end";
@@ -928,14 +906,14 @@ const ClimateOverview = ({
           <div className={miniCardClass}>
             <div className="text-[10px] md:text-xs uppercase tracking-wide text-gray-400 font-semibold">Temperature</div>
             <div className="mt-2 flex items-end gap-1.5">
-              <span className="text-3xl md:text-4xl font-semibold leading-none" style={{ color: statusColors[tempStatus] }}>{temp.toFixed(1)}</span>
+              <span className="text-3xl md:text-4xl font-semibold leading-none" style={{ color: statusColorOf(tempStatus) }}>{formatMetricValue(temp, 1)}</span>
               <span className={unitClass}>{'\u00B0C'}</span>
             </div>
           </div>
           <div className={miniCardClass}>
             <div className="text-[10px] md:text-xs uppercase tracking-wide text-gray-400 font-semibold">Humidity</div>
             <div className="mt-2 flex items-end gap-1.5">
-              <span className="text-3xl md:text-4xl font-semibold leading-none" style={{ color: statusColors[rhStatus] }}>{rh.toFixed(0)}</span>
+              <span className="text-3xl md:text-4xl font-semibold leading-none" style={{ color: statusColorOf(rhStatus) }}>{formatMetricValue(rh, 0)}</span>
               <span className={unitClass}>%</span>
             </div>
           </div>
@@ -945,7 +923,7 @@ const ClimateOverview = ({
           <div className={`${miniCardClass} h-full`}>
             <div className={climateLabelClass}>Mold Risk</div>
             <div className="mt-1.5 flex items-end gap-1.5">
-              <span className="text-3xl md:text-4xl font-semibold leading-none" style={{ color: statusColors[moldStatus] }}>{mold.toFixed(1)}</span>
+              <span className="text-3xl md:text-4xl font-semibold leading-none" style={{ color: statusColorOf(moldStatus) }}>{formatMetricValue(mold, 1)}</span>
               <span className={unitClass}>/10</span>
             </div>
           </div>
@@ -953,7 +931,7 @@ const ClimateOverview = ({
           <div className={`${miniCardClass} h-full`}>
             <div className={climateLabelClass}>Dew Point</div>
             <div className="mt-1.5 flex items-end gap-1.5">
-              <span className="text-3xl md:text-4xl font-semibold leading-none" style={{ color: statusColors[dewPointStatus] }}>{dewPoint.toFixed(1)}</span>
+              <span className="text-3xl md:text-4xl font-semibold leading-none" style={{ color: statusColorOf(dewPointStatus) }}>{formatMetricValue(dewPoint, 1)}</span>
               <span className={unitClass}>{'\u00B0C'}</span>
             </div>
           </div>
@@ -961,7 +939,7 @@ const ClimateOverview = ({
           <div className={`${miniCardClass} h-full`}>
             <div className={climateLabelClass}>Abs Humidity</div>
             <div className="mt-1.5 flex items-end gap-1.5">
-              <span className="text-3xl md:text-4xl font-semibold leading-none" style={{ color: statusColors[ahStatus] }}>{ah.toFixed(1)}</span>
+              <span className="text-3xl md:text-4xl font-semibold leading-none" style={{ color: statusColorOf(ahStatus) }}>{formatMetricValue(ah, 1)}</span>
               <span className={unitClass}>{'g/m\u00B3'}</span>
             </div>
           </div>
@@ -972,7 +950,7 @@ const ClimateOverview = ({
             <div>
               <div className="text-[10px] md:text-xs uppercase tracking-wide text-gray-400 font-semibold">Pressure</div>
               <div className="mt-1 flex items-end gap-1.5">
-                <span className="text-2xl md:text-3xl font-semibold leading-none text-white">{pressure.toFixed(1)}</span>
+                <span className="text-2xl md:text-3xl font-semibold leading-none text-white">{formatMetricValue(pressure, 1)}</span>
                 <span className={unitClass}>hPa</span>
               </div>
             </div>
@@ -980,13 +958,13 @@ const ClimateOverview = ({
               <div className="rounded-md border px-3 py-2" style={pressureTrend3h.surfaceStyle}>
                 <div className="text-[11px] md:text-xs text-gray-400 leading-none">3h</div>
                 <div className="mt-1 text-base md:text-lg font-semibold leading-none" style={pressureTrend3h.textStyle}>
-                  {delta3h > 0 ? '+' : ''}{delta3h.toFixed(1)}
+                  {formatSignedMetricValue(delta3h, 1)}
                 </div>
               </div>
               <div className="rounded-md border px-3 py-2" style={pressureTrend24h.surfaceStyle}>
                 <div className="text-[11px] md:text-xs text-gray-400 leading-none">24h</div>
                 <div className="mt-1 text-base md:text-lg font-semibold leading-none" style={pressureTrend24h.textStyle}>
-                  {delta24h > 0 ? '+' : ''}{delta24h.toFixed(1)}
+                  {formatSignedMetricValue(delta24h, 1)}
                 </div>
               </div>
             </div>
@@ -998,8 +976,11 @@ const ClimateOverview = ({
 };
 
 const GasMetricCard = ({ label, value, unit, max, status, decimals = 1, compact = false }) => {
-  const progress = Math.min((value / max) * 100, 100);
-  const valueText = Number(value).toFixed(decimals);
+  const safeValue = isFiniteNumber(value) ? value : null;
+  const safeMax = isFiniteNumber(max) && max > 0 ? max : null;
+  const progress = safeValue !== null && safeMax !== null ? Math.min((safeValue / safeMax) * 100, 100) : 0;
+  const valueText = formatMetricValue(safeValue, decimals);
+  const valueColor = statusColorOf(status);
   const cardPaddingClass = compact ? 'p-2.5 md:p-3' : 'p-3 md:p-4';
   const labelClass = compact
     ? 'text-[10px] md:text-[11px] uppercase tracking-wide text-gray-300 font-semibold'
@@ -1014,17 +995,25 @@ const GasMetricCard = ({ label, value, unit, max, status, decimals = 1, compact 
         <span className={unitTextClass}>{unit}</span>
       </div>
       <div className="mt-1.5 flex items-end justify-between">
-        <span className={valueClass} style={{ color: statusColors[status] }}>{valueText}</span>
+        <span className={valueClass} style={{ color: valueColor }}>{valueText}</span>
         <StatusPill status={status} compact={compact} />
       </div>
       <div className={progressBarClass}>
-        <div className="h-full rounded-full" style={{ width: `${progress}%`, backgroundColor: statusColors[status] }} />
+        <div className="h-full rounded-full" style={{ width: `${progress}%`, backgroundColor: valueColor }} />
       </div>
     </div>
   );
 };
 
 const trendToken = (delta, is24h = false) => {
+  if (!isFiniteNumber(delta)) {
+    return {
+      status: null,
+      label: 'No data',
+      textStyle: statusTextStyle(null),
+      surfaceStyle: statusSurfaceStyle(null),
+    };
+  }
   const absDelta = Math.abs(delta);
   const status = getStatus(absDelta, is24h ? thresholds.pressureDelta24h : thresholds.pressureDelta3h);
 
@@ -1228,43 +1217,10 @@ const TabNav = ({ tabs, activeTab, onChange }) => {
 };
 
 // Settings Components
-const SettingGroup = ({ title, children }) => (
-  <div className="bg-gray-800 rounded-xl p-4 md:p-5 border border-gray-700/50">
+const SettingGroup = ({ title, children, className = '' }) => (
+  <div className={`bg-gray-800 rounded-xl p-4 md:p-5 border border-gray-700/50 ${className}`.trim()}>
     <div className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-3">{title}</div>
     <div className="space-y-3">{children}</div>
-  </div>
-);
-
-const SettingStepper = ({ label, value, unit, stepHint, onDec, onInc, disabled = false }) => (
-  <div className={`flex justify-between items-center ${disabled ? 'opacity-65' : ''}`}>
-    <div>
-      <div className="text-gray-300 text-sm">{label}</div>
-      {stepHint && <div className="text-[11px] text-gray-500 mt-0.5">{stepHint}</div>}
-    </div>
-    <div className="flex items-center gap-2">
-      <button 
-        disabled={disabled}
-        onClick={onDec}
-        className={`w-8 h-8 flex items-center justify-center bg-gray-800 border border-gray-700 rounded-lg text-gray-400 transition-colors ${
-          disabled ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-700 hover:text-white'
-        }`}
-      >
-        <Minus size={14} />
-      </button>
-      <div className="w-24 text-center">
-        <span className="text-sm md:text-base font-mono text-white">{value > 0 ? '+' : ''}{value}</span>
-        <span className="ml-1 text-xs md:text-sm text-gray-400">{unit}</span>
-      </div>
-      <button 
-        disabled={disabled}
-        onClick={onInc}
-        className={`w-8 h-8 flex items-center justify-center bg-gray-800 border border-gray-700 rounded-lg text-gray-400 transition-colors ${
-          disabled ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-700 hover:text-white'
-        }`}
-      >
-        <Plus size={14} />
-      </button>
-    </div>
   </div>
 );
 
@@ -1290,21 +1246,71 @@ const SettingInfoRow = ({ label, value, valueClassName = "text-white text-sm", m
   </div>
 );
 
+const SettingSegmentControl = ({ label, icon: Icon, options, value, onChange }) => (
+  <div className="flex justify-between items-center">
+    <div className="flex items-center gap-2 text-gray-300 text-sm">
+      {Icon && <Icon size={16} className="text-gray-500" />}
+      {label}
+    </div>
+    <div className="flex bg-gray-900/60 border border-gray-700 rounded-lg p-0.5">
+      {options.map((option) => {
+        const active = option.value === value;
+        return (
+          <button
+            key={option.value}
+            onClick={() => onChange(option.value)}
+            className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
+              active ? 'bg-cyan-600 text-white' : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  </div>
+);
+
+const SettingStepper = ({ label, value, unit, stepHint, onDec, onInc, decimals = 1 }) => (
+  <div className="flex justify-between items-center">
+    <div>
+      <div className="text-gray-300 text-sm">{label}</div>
+      {stepHint && <div className="text-[11px] text-gray-500 mt-0.5">{stepHint}</div>}
+    </div>
+    <div className="flex items-center gap-2">
+      <button
+        onClick={onDec}
+        className="w-8 h-8 flex items-center justify-center bg-gray-800 border border-gray-700 rounded-lg text-gray-400 hover:bg-gray-700 hover:text-white transition-colors"
+      >
+        -
+      </button>
+      <div className="min-w-[92px] text-center">
+        <span className="text-sm md:text-base font-mono text-white">
+          {value > 0 ? '+' : ''}{Number(value).toFixed(decimals)}
+        </span>
+        <span className="ml-1 text-xs md:text-sm text-gray-400">{unit}</span>
+      </div>
+      <button
+        onClick={onInc}
+        className="w-8 h-8 flex items-center justify-center bg-gray-800 border border-gray-700 rounded-lg text-gray-400 hover:bg-gray-700 hover:text-white transition-colors"
+      >
+        +
+      </button>
+    </div>
+  </div>
+);
+
 // ============ MAIN DASHBOARD ============
 function AuraDashboard() {
   const [activeTab, setActiveTab] = useState('sensors');
   const [chartRange, setChartRange] = useState('24h');
   const [chartGroup, setChartGroup] = useState('core');
-  const settingsPreviewOnly = true;
   
   // Settings State
-  const [settings, setSettings] = useState({
-    nightMode: false,
-    alertBlink: true,
-    backlight: true,
-    tempOffset: -1.2,
-    humOffset: 2.0,
-  });
+  const [settings, setSettings] = useState(DEFAULT_WEB_SETTINGS);
+  const [savedSettings, setSavedSettings] = useState(DEFAULT_WEB_SETTINGS);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsSaveStatus, setSettingsSaveStatus] = useState('idle'); // idle | saved | error
 
   // Device Name Editing
   const [deviceName, setDeviceName] = useState(PREVIEW_HOSTNAME);
@@ -1321,27 +1327,121 @@ function AuraDashboard() {
     setIsEditingName(false);
   };
 
-  const toggleSetting = (key) => {
-    setSettings(prev => ({ ...prev, [key]: !prev[key] }));
+  const hasSettingsChanges =
+    settings.tempUnit !== savedSettings.tempUnit ||
+    settings.tempOffset !== savedSettings.tempOffset ||
+    settings.humOffset !== savedSettings.humOffset;
+
+  const applyParsedSettings = (parsed, force = false) => {
+    if (!parsed) return;
+    if (!force && (hasSettingsChanges || settingsSaving)) return;
+    const patch = settingsPatchFromParsed(parsed);
+    if (Object.keys(patch).length === 0) return;
+    setSavedSettings((prev) => ({ ...prev, ...patch }));
+    setSettings((prev) => ({ ...prev, ...patch }));
   };
 
-  const updateOffset = (key, delta) => {
-    setSettings(prev => ({ 
-      ...prev, 
-      [key]: Number((prev[key] + delta).toFixed(1)) 
-    }));
+  const postSettingsPatch = (patch) =>
+    fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      });
+
+  const toggleNightMode = () => {
+    if (settings.nightModeLocked) return;
+    const next = !settings.nightMode;
+    setSettings((prev) => ({ ...prev, nightMode: next }));
+    setSavedSettings((prev) => ({ ...prev, nightMode: next }));
+    postSettingsPatch({ night_mode: next })
+      .then((payload) => {
+        const parsed = parseSettingsPayload(payload?.settings || {});
+        applyParsedSettings(parsed, true);
+      })
+      .catch(() => {});
   };
-  
-  const fullData = SENSOR_PLACEHOLDER_HISTORY;
-  const placeholderCurrent = fullData[fullData.length - 1];
+
+  const toggleBacklight = () => {
+    const next = !settings.backlight;
+    setSettings((prev) => ({ ...prev, backlight: next }));
+    setSavedSettings((prev) => ({ ...prev, backlight: next }));
+    postSettingsPatch({ backlight_on: next })
+      .then((payload) => {
+        const parsed = parseSettingsPayload(payload?.settings || {});
+        applyParsedSettings(parsed, true);
+      })
+      .catch(() => {});
+  };
+
+  const setTemperatureUnit = (nextUnit) => {
+    if (nextUnit !== 'c' && nextUnit !== 'f') return;
+    setSettingsSaveStatus('idle');
+    setSettings((prev) => ({ ...prev, tempUnit: nextUnit }));
+  };
+
+  const updateOffset = (key, delta, decimals = 1) => {
+    setSettingsSaveStatus('idle');
+    setSettings((prev) => {
+      let nextValue = Number((prev[key] + delta).toFixed(decimals));
+      if (key === 'tempOffset') {
+        const displayValue = tempOffsetCToDisplay(prev.tempOffset, prev.tempUnit);
+        let nextDisplayValue = Number((displayValue + delta).toFixed(decimals));
+        const maxDisplayOffset = prev.tempUnit === 'f' ? 9 : 5;
+        nextDisplayValue = Math.max(-maxDisplayOffset, Math.min(maxDisplayOffset, nextDisplayValue));
+        nextValue = tempOffsetDisplayToC(nextDisplayValue, prev.tempUnit);
+        nextValue = Number(nextValue.toFixed(1));
+      } else if (key === 'humOffset') {
+        nextValue = Math.max(-10, Math.min(10, nextValue));
+      }
+      return {
+        ...prev,
+        [key]: nextValue,
+      };
+    });
+  };
+
+  const saveSettings = () => {
+    if (!hasSettingsChanges || settingsSaving) return;
+    setSettingsSaving(true);
+    setSettingsSaveStatus('idle');
+    postSettingsPatch({
+      units_c: settings.tempUnit === 'c',
+      temp_offset: settings.tempOffset,
+      hum_offset: settings.humOffset,
+    })
+      .then((payload) => {
+        const parsed = parseSettingsPayload(payload?.settings || {});
+        applyParsedSettings(parsed, true);
+        setSettingsSaveStatus('saved');
+      })
+      .catch(() => {
+        setSettingsSaveStatus('error');
+      })
+      .finally(() => {
+        setSettingsSaving(false);
+      });
+  };
+
+  const requestRestart = () => {
+    postSettingsPatch({ restart: true }).catch(() => {});
+  };
+
+  useEffect(() => {
+    if (settingsSaveStatus === 'idle') return;
+    const timeoutId = setTimeout(() => setSettingsSaveStatus('idle'), 2500);
+    return () => clearTimeout(timeoutId);
+  }, [settingsSaveStatus]);
 
   const [stateApi, setStateApi] = useState(null);
-  const [stateApiLive, setStateApiLive] = useState(false);
 
   const [chartApiData, setChartApiData] = useState(null);
   const [chartApiLatest, setChartApiLatest] = useState({});
-  const [chartApiLoading, setChartApiLoading] = useState(false);
-  const [chartApiLive, setChartApiLive] = useState(false);
   const [sensorHistoryData, setSensorHistoryData] = useState(null);
   const [clockTickMs, setClockTickMs] = useState(Date.now());
   const [deviceClockRef, setDeviceClockRef] = useState(null);
@@ -1358,7 +1458,6 @@ function AuraDashboard() {
 
     const controller = new AbortController();
     const apiGroup = chartGroup === 'core' ? 'core' : chartGroup;
-    setChartApiLoading(true);
 
     fetch(`/api/charts?group=${encodeURIComponent(apiGroup)}&window=${encodeURIComponent(chartRange)}`, {
       cache: 'no-store',
@@ -1380,18 +1479,11 @@ function AuraDashboard() {
             capturedAtMs: Date.now(),
           });
         }
-        setChartApiLive(true);
       })
       .catch((error) => {
         if (error?.name === 'AbortError') return;
         setChartApiData(null);
         setChartApiLatest({});
-        setChartApiLive(false);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setChartApiLoading(false);
-        }
       });
 
     return () => controller.abort();
@@ -1448,12 +1540,8 @@ function AuraDashboard() {
           if (!active) return;
           const parsed = parseStateApiPayload(payload);
           setStateApi(parsed);
-          setStateApiLive(true);
         })
-        .catch(() => {
-          if (!active) return;
-          setStateApiLive(false);
-        });
+        .catch(() => {});
     };
 
     loadState();
@@ -1503,48 +1591,52 @@ function AuraDashboard() {
   const stateDerived = stateApi?.derived || {};
   const stateConnectivity = stateApi?.connectivity || {};
   const stateSystem = stateApi?.system || {};
+  const stateSettings = stateApi?.settings || {};
   const current = {
-    co2: stateCurrent.co2 ?? placeholderCurrent.co2,
-    temp: stateCurrent.temp ?? placeholderCurrent.temp,
-    rh: stateCurrent.rh ?? placeholderCurrent.rh,
-    pressure: stateCurrent.pressure ?? placeholderCurrent.pressure,
-    pm05: stateCurrent.pm05 ?? placeholderCurrent.pm05,
-    pm1: stateCurrent.pm1 ?? placeholderCurrent.pm1,
-    pm25: stateCurrent.pm25 ?? placeholderCurrent.pm25,
-    pm4: stateCurrent.pm4 ?? placeholderCurrent.pm4,
-    pm10: stateCurrent.pm10 ?? placeholderCurrent.pm10,
-    voc: stateCurrent.voc ?? placeholderCurrent.voc,
-    nox: stateCurrent.nox ?? placeholderCurrent.nox,
-    hcho: stateCurrent.hcho ?? placeholderCurrent.hcho,
-    co: stateCurrent.co ?? placeholderCurrent.co,
-    mold: stateDerived.mold ?? placeholderCurrent.mold,
+    co2: stateCurrent.co2 ?? null,
+    temp: stateCurrent.temp ?? null,
+    rh: stateCurrent.rh ?? null,
+    pressure: stateCurrent.pressure ?? null,
+    pm05: stateCurrent.pm05 ?? null,
+    pm1: stateCurrent.pm1 ?? null,
+    pm25: stateCurrent.pm25 ?? null,
+    pm4: stateCurrent.pm4 ?? null,
+    pm10: stateCurrent.pm10 ?? null,
+    voc: stateCurrent.voc ?? null,
+    nox: stateCurrent.nox ?? null,
+    hcho: stateCurrent.hcho ?? null,
+    co: stateCurrent.co ?? null,
+    mold: stateDerived.mold ?? null,
   };
-  // Top-right values in Charts should match live sensor cards.
-  const chartLatestValues = {
-    ...chartApiLatest,
-    ...current,
-  };
+  // Top-right values in Charts should match live sensor cards when available.
+  const chartLatestValues = useMemo(() => {
+    const merged = { ...(chartApiLatest || {}) };
+    Object.entries(current).forEach(([key, value]) => {
+      if (isFiniteNumber(value)) merged[key] = value;
+    });
+    return merged;
+  }, [chartApiLatest, current]);
   
-  const ah = stateDerived.ah ?? SENSOR_PLACEHOLDER_DERIVED.ah;
-  const dewPoint = stateDerived.dewPoint ?? SENSOR_PLACEHOLDER_DERIVED.dewPoint;
-  const delta3h = stateDerived.delta3h ?? SENSOR_PLACEHOLDER_DERIVED.delta3h;
-  const delta24h = stateDerived.delta24h ?? SENSOR_PLACEHOLDER_DERIVED.delta24h;
-  const co2Status = getStatus(current.co2, thresholds.co2);
-  const tempStatus = getStatus(current.temp, thresholds.temp);
-  const rhStatus = getStatus(current.rh, thresholds.rh);
-  const pm05Status = getStatus(current.pm05, thresholds.pm05);
-  const pm1Status = getStatus(current.pm1, thresholds.pm1);
-  const pm25Status = getStatus(current.pm25, thresholds.pm25);
-  const pm4Status = getStatus(current.pm4, thresholds.pm4);
-  const pm10Status = getStatus(current.pm10, thresholds.pm10);
-  const vocStatus = getStatus(current.voc, thresholds.voc);
-  const noxStatus = getStatus(current.nox, thresholds.nox);
-  const hchoStatus = getStatus(current.hcho, thresholds.hcho);
-  const coStatus = getStatus(current.co, thresholds.co);
-  const moldStatus = getStatus(current.mold, thresholds.mold);
+  const ah = stateDerived.ah ?? null;
+  const dewPoint = stateDerived.dewPoint ?? null;
+  const delta3h = stateDerived.delta3h ?? null;
+  const delta24h = stateDerived.delta24h ?? null;
+  const co2Status = metricStatus(current.co2, thresholds.co2);
+  const tempStatus = metricStatus(current.temp, thresholds.temp);
+  const rhStatus = metricStatus(current.rh, thresholds.rh);
+  const pm05Status = metricStatus(current.pm05, thresholds.pm05, { round: true });
+  const pm1Status = metricStatus(current.pm1, thresholds.pm1);
+  const pm25Status = metricStatus(current.pm25, thresholds.pm25);
+  const pm4Status = metricStatus(current.pm4, thresholds.pm4);
+  const pm10Status = metricStatus(current.pm10, thresholds.pm10);
+  const vocStatus = metricStatus(current.voc, thresholds.voc);
+  const noxStatus = metricStatus(current.nox, thresholds.nox);
+  const hchoStatus = metricStatus(current.hcho, thresholds.hcho);
+  const coStatus = metricStatus(current.co, thresholds.co);
+  const moldStatus = metricStatus(current.mold, thresholds.mold);
   const pressureTrend3h = trendToken(delta3h, false);
   const pressureTrend24h = trendToken(delta24h, true);
-  const uptime = stateSystem.uptime || stateDerived.uptime || SENSOR_PLACEHOLDER_DERIVED.uptime;
+  const uptime = stateSystem.uptime || stateDerived.uptime || '\u2014';
 
   const connectivity = {
     wifiSsid: stateConnectivity.wifiSsid || 'MyHome_5G',
@@ -1556,6 +1648,7 @@ function AuraDashboard() {
   };
   const firmwareVersion = stateSystem.firmware || 'v2.1.0-beta';
   const firmwareBuild = [stateSystem.buildDate, stateSystem.buildTime].filter(Boolean).join(' ') || '20240315';
+  const dacAvailable = stateSystem.dacAvailable === true;
   const localWebUrl = `http://${connectivity.hostname}.local`;
   const signalClass =
     connectivity.rssi > -67
@@ -1568,6 +1661,21 @@ function AuraDashboard() {
     : new Date(clockTickMs);
   const headerTime = formatHeaderTime(headerNow);
   const headerDate = formatHeaderDate(headerNow);
+  const tempOffsetStep = settings.tempUnit === 'f' ? 0.2 : 0.1;
+  const tempOffsetDisplayValue = Number(tempOffsetCToDisplay(settings.tempOffset, settings.tempUnit).toFixed(1));
+  const tempOffsetUnitLabel = settings.tempUnit === 'f' ? '\u00B0F' : '\u00B0C';
+  const tempOffsetStepHint = settings.tempUnit === 'f' ? 'Step: 0.2 \u00B0F' : 'Step: 0.1 \u00B0C';
+
+  useEffect(() => {
+    applyParsedSettings(stateSettings);
+  }, [
+    stateSettings.nightMode,
+    stateSettings.nightModeLocked,
+    stateSettings.backlight,
+    stateSettings.tempUnit,
+    stateSettings.tempOffset,
+    stateSettings.humOffset,
+  ]);
 
   useEffect(() => {
     if (!isEditingName && stateConnectivity.hostname) {
@@ -1679,11 +1787,11 @@ function AuraDashboard() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5 md:gap-3">
-            <GasMetricCard label="PM0.5" value={current.pm05} unit="#/cm\u00B3" max={thresholds.pm05.bad} status={pm05Status} decimals={0} compact />
-            <GasMetricCard label="PM1.0" value={current.pm1} unit="\u00B5g/m\u00B3" max={thresholds.pm1.bad} status={pm1Status} compact />
-            <GasMetricCard label="PM2.5" value={current.pm25} unit="\u00B5g/m\u00B3" max={thresholds.pm25.bad} status={pm25Status} compact />
-            <GasMetricCard label="PM4.0" value={current.pm4} unit="\u00B5g/m\u00B3" max={thresholds.pm4.bad} status={pm4Status} compact />
-            <GasMetricCard label="PM10" value={current.pm10} unit="\u00B5g/m\u00B3" max={thresholds.pm10.bad} status={pm10Status} compact />
+            <GasMetricCard label="PM0.5" value={current.pm05} unit={"#/cm\u00B3"} max={thresholds.pm05.bad} status={pm05Status} decimals={0} compact />
+            <GasMetricCard label="PM1.0" value={current.pm1} unit={"\u00B5g/m\u00B3"} max={thresholds.pm1.bad} status={pm1Status} compact />
+            <GasMetricCard label="PM2.5" value={current.pm25} unit={"\u00B5g/m\u00B3"} max={thresholds.pm25.bad} status={pm25Status} compact />
+            <GasMetricCard label="PM4.0" value={current.pm4} unit={"\u00B5g/m\u00B3"} max={thresholds.pm4.bad} status={pm4Status} compact />
+            <GasMetricCard label="PM10" value={current.pm10} unit={"\u00B5g/m\u00B3"} max={thresholds.pm10.bad} status={pm10Status} compact />
           </div>
 
         </div>
@@ -1732,18 +1840,10 @@ function AuraDashboard() {
             </div>
           </div>
 
-          <div className="text-[11px] md:text-xs text-gray-500">
-            {chartApiLoading
-              ? 'Loading live chart history...'
-              : chartApiLive
-                ? 'Live history: /api/charts'
-                : 'No data / Awaiting data from /api/charts'}
-          </div>
-
           {chartGroup === 'core' && (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 md:gap-4">
               <ChartSection title="CO2 Concentration" data={chartData} lines={[{ key: 'co2', name: 'CO2' }]} unit="ppm" color="#10b981" latestValues={chartLatestValues} />
-              <ChartSection title="Temperature" data={chartData} lines={[{ key: 'temp', name: 'Temp' }]} unit="\u00B0C" color="#f59e0b" latestValues={chartLatestValues} />
+              <ChartSection title="Temperature" data={chartData} lines={[{ key: 'temp', name: 'Temp' }]} unit={"\u00B0C"} color="#f59e0b" latestValues={chartLatestValues} />
               <ChartSection title="Humidity" data={chartData} lines={[{ key: 'rh', name: 'RH' }]} unit="%" color="#3b82f6" latestValues={chartLatestValues} />
               <ChartSection title="Pressure" data={chartData} lines={[{ key: 'pressure', name: 'hPa' }]} unit="hPa" color="#0ea5e9" latestValues={chartLatestValues} />
             </div>
@@ -1760,9 +1860,9 @@ function AuraDashboard() {
 
           {chartGroup === 'pm' && (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 md:gap-4">
-              <ChartSection title="PM0.5" data={chartData} lines={[{ key: 'pm05', name: 'PM0.5' }]} unit="#/cm\u00B3" color="#14b8a6" latestValues={chartLatestValues} />
-              <ChartSection title="PM1.0" data={chartData} lines={[{ key: 'pm1', name: 'PM1.0' }]} unit="\u00B5g/m\u00B3" color="#a78bfa" latestValues={chartLatestValues} />
-              <ChartSection title="PM2.5" data={chartData} lines={[{ key: 'pm25', name: 'PM2.5' }]} unit="\u00B5g/m\u00B3" color="#8b5cf6" latestValues={chartLatestValues} />
+              <ChartSection title="PM0.5" data={chartData} lines={[{ key: 'pm05', name: 'PM0.5' }]} unit={"#/cm\u00B3"} color="#14b8a6" latestValues={chartLatestValues} />
+              <ChartSection title="PM1.0" data={chartData} lines={[{ key: 'pm1', name: 'PM1.0' }]} unit={"\u00B5g/m\u00B3"} color="#a78bfa" latestValues={chartLatestValues} />
+              <ChartSection title="PM2.5" data={chartData} lines={[{ key: 'pm25', name: 'PM2.5' }]} unit={"\u00B5g/m\u00B3"} color="#8b5cf6" latestValues={chartLatestValues} />
               <ChartSection
                 title="PM10 + PM4.0"
                 data={chartData}
@@ -1770,7 +1870,7 @@ function AuraDashboard() {
                   { key: 'pm10', name: 'PM10', color: '#6d28d9' },
                   { key: 'pm4', name: 'PM4.0', color: '#0ea5e9' },
                 ]}
-                unit="\u00B5g/m\u00B3"
+                unit={"\u00B5g/m\u00B3"}
                 latestValues={chartLatestValues}
               />
             </div>
@@ -1782,9 +1882,6 @@ function AuraDashboard() {
         <div className="space-y-3 animate-in fade-in duration-300">
           <div className="bg-gray-800 rounded-xl p-4 md:p-5 border border-gray-700/50">
              <div className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-3">System Log</div>
-             <div className="text-[11px] text-gray-500 mb-2">
-               {eventsApiLive ? 'Live log: /api/events' : 'Preview fallback log (API unavailable)'}
-             </div>
              {alerts.length > 0 ? (
                alerts.map((alert, i) => (
                  <AlertItem key={i} {...alert} />
@@ -1798,88 +1895,132 @@ function AuraDashboard() {
 
       {activeTab === 'settings' && (
         <div className="space-y-3 md:space-y-4 animate-in fade-in duration-300">
-          {settingsPreviewOnly && (
-            <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-[11px] md:text-xs text-yellow-200">
-              Preview only: settings controls are disabled in this web prototype.
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 items-start">
+            <div className="space-y-3 md:space-y-4">
+              <SettingGroup title="Display">
+                <SettingToggle 
+                  label="Night Mode" 
+                  icon={Moon}
+                  enabled={settings.nightMode} 
+                  onClick={toggleNightMode}
+                  disabled={settings.nightModeLocked}
+                />
+                <SettingToggle 
+                  label="Backlight" 
+                  icon={Sun}
+                  enabled={settings.backlight} 
+                  onClick={toggleBacklight}
+                />
+              </SettingGroup>
+
+              <SettingGroup title="Connectivity">
+                <SettingInfoRow label="WiFi SSID" value={connectivity.wifiSsid} valueClassName="text-white text-sm" mono />
+                <SettingInfoRow label="Hostname" value={connectivity.hostname} valueClassName="text-white text-sm" mono />
+                <SettingInfoRow label="IP Address" value={connectivity.ip} valueClassName="text-white text-sm" mono />
+                <SettingInfoRow label="Signal" value={`${connectivity.rssi} dBm`} valueClassName={signalClass} />
+                <SettingInfoRow label="MQTT Broker" value={connectivity.mqttBroker} valueClassName="text-gray-300 text-sm" mono />
+                <SettingInfoRow
+                  label="MQTT Status"
+                  value={connectivity.mqttConnected ? 'Connected' : 'Disconnected'}
+                  valueClassName={connectivity.mqttConnected ? "text-emerald-400 text-sm font-semibold" : "text-red-400 text-sm font-semibold"}
+                />
+              </SettingGroup>
             </div>
-          )}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-            <SettingGroup title="Quick Actions">
-              <SettingToggle 
-                label="Night Mode" 
-                icon={Moon}
-                enabled={settings.nightMode} 
-                onClick={() => toggleSetting('nightMode')}
-                disabled={settingsPreviewOnly}
-              />
-              <SettingToggle 
-                label="Alert Blink" 
-                icon={Bell}
-                enabled={settings.alertBlink} 
-                onClick={() => toggleSetting('alertBlink')}
-                disabled={settingsPreviewOnly}
-              />
-              <SettingToggle 
-                label="Display Backlight" 
-                icon={Sun}
-                enabled={settings.backlight} 
-                onClick={() => toggleSetting('backlight')}
-                disabled={settingsPreviewOnly}
-              />
-            </SettingGroup>
 
-            <SettingGroup title="Sensor Calibration">
-              <SettingStepper 
-                label="Temperature Offset" 
-                value={settings.tempOffset} 
-                unit="\u00B0C"
-                stepHint="Step: 0.1 \u00B0C"
-                onDec={() => updateOffset('tempOffset', -0.1)}
-                onInc={() => updateOffset('tempOffset', 0.1)}
-                disabled={settingsPreviewOnly}
-              />
-              <SettingStepper 
-                label="Humidity Offset" 
-                value={settings.humOffset} 
-                unit="%RH"
-                stepHint="Step: 1 %"
-                onDec={() => updateOffset('humOffset', -1)}
-                onInc={() => updateOffset('humOffset', 1)}
-                disabled={settingsPreviewOnly}
-              />
-            </SettingGroup>
+            <div className="space-y-3 md:space-y-4">
+              <SettingGroup title="Measurements">
+                <SettingSegmentControl
+                  label="Temperature Unit"
+                  options={[
+                    { label: '\u00B0C', value: 'c' },
+                    { label: '\u00B0F', value: 'f' },
+                  ]}
+                  value={settings.tempUnit}
+                  onChange={setTemperatureUnit}
+                />
+                <SettingStepper
+                  label="Temperature Offset"
+                  value={tempOffsetDisplayValue}
+                  unit={tempOffsetUnitLabel}
+                  stepHint={tempOffsetStepHint}
+                  decimals={1}
+                  onDec={() => updateOffset('tempOffset', -tempOffsetStep, 1)}
+                  onInc={() => updateOffset('tempOffset', tempOffsetStep, 1)}
+                />
+                <SettingStepper
+                  label="Humidity Offset"
+                  value={settings.humOffset}
+                  unit="%"
+                  stepHint="Step: 1 %"
+                  decimals={0}
+                  onDec={() => updateOffset('humOffset', -1, 0)}
+                  onInc={() => updateOffset('humOffset', 1, 0)}
+                />
+                <div className="pt-2 border-t border-gray-700/60">
+                  {(() => {
+                    const isDisabled = !hasSettingsChanges || settingsSaving;
+                    const showSaved = settingsSaveStatus === 'saved' && !hasSettingsChanges && !settingsSaving;
+                    const showError = settingsSaveStatus === 'error';
+                    const label = settingsSaving
+                      ? 'Saving...'
+                      : showSaved
+                        ? 'Saved'
+                        : showError
+                          ? 'Save Failed'
+                          : hasSettingsChanges
+                            ? 'Save Settings'
+                            : 'No Changes';
+                    const className = isDisabled
+                      ? (showSaved
+                          ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'
+                          : 'bg-gray-800/70 text-gray-500 border-gray-700 cursor-not-allowed')
+                      : (showError
+                          ? 'bg-red-500/10 hover:bg-red-500/20 text-red-300 border-red-500/40'
+                          : 'bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border-cyan-500/40');
+                    return (
+                      <>
+                        <button
+                          onClick={saveSettings}
+                          disabled={isDisabled}
+                          className={`w-full border py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${className}`}
+                        >
+                          {label}
+                        </button>
+                        {showSaved && (
+                          <div className="mt-2 text-[11px] text-emerald-300/90">Settings saved to device.</div>
+                        )}
+                        {showError && (
+                          <div className="mt-2 text-[11px] text-red-300/90">Could not save settings. Try again.</div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              </SettingGroup>
 
-            <SettingGroup title="Connectivity">
-              <SettingInfoRow label="WiFi SSID" value={connectivity.wifiSsid} valueClassName="text-white text-sm" mono />
-              <SettingInfoRow label="Hostname" value={connectivity.hostname} valueClassName="text-white text-sm" mono />
-              <SettingInfoRow label="IP Address" value={connectivity.ip} valueClassName="text-white text-sm" mono />
-              <SettingInfoRow label="Signal" value={`${connectivity.rssi} dBm`} valueClassName={signalClass} />
-              <SettingInfoRow label="MQTT Broker" value={connectivity.mqttBroker} valueClassName="text-gray-300 text-sm" mono />
-              <SettingInfoRow
-                label="MQTT Status"
-                value={connectivity.mqttConnected ? 'Connected' : 'Disconnected'}
-                valueClassName={connectivity.mqttConnected ? "text-emerald-400 text-sm font-semibold" : "text-red-400 text-sm font-semibold"}
-              />
-            </SettingGroup>
-
-            <SettingGroup title="System">
-              <div className="space-y-1">
-                <SettingInfoRow label="Firmware" value={firmwareVersion} valueClassName="text-gray-200 text-sm" mono />
-                <SettingInfoRow label="Build" value={firmwareBuild} valueClassName="text-gray-300 text-sm" mono />
-                <SettingInfoRow label="Uptime" value={uptime} valueClassName="text-gray-200 text-sm" mono />
-                <SettingInfoRow label="Web URL" value={localWebUrl} valueClassName="text-cyan-300 text-sm" mono />
-              </div>
-              <button
-                disabled={settingsPreviewOnly}
-                className={`w-full mt-2 border py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 ${
-                  settingsPreviewOnly
-                    ? 'bg-gray-700/35 text-gray-400 border-gray-600/50 cursor-not-allowed'
-                    : 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/40 transition-colors'
-                }`}
-              >
-                <RotateCw size={14} /> Reboot Device
-              </button>
-            </SettingGroup>
+              <SettingGroup title="System">
+                <div className="space-y-1">
+                  <SettingInfoRow label="Firmware" value={firmwareVersion} valueClassName="text-gray-200 text-sm" mono />
+                  <SettingInfoRow label="Build" value={firmwareBuild} valueClassName="text-gray-300 text-sm" mono />
+                  <SettingInfoRow label="Uptime" value={uptime} valueClassName="text-gray-200 text-sm" mono />
+                  <SettingInfoRow label="Web URL" value={localWebUrl} valueClassName="text-cyan-300 text-sm" mono />
+                </div>
+                <button
+                  onClick={requestRestart}
+                  className="w-full mt-2 border py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/40 transition-colors"
+                >
+                  <RotateCw size={14} /> Reboot Device
+                </button>
+                {dacAvailable && (
+                  <button
+                    onClick={() => { window.location.href = '/dac'; }}
+                    className="w-full mt-2 border py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border-cyan-500/40 transition-colors"
+                  >
+                    DAC Settings
+                  </button>
+                )}
+              </SettingGroup>
+            </div>
           </div>
         </div>
       )}
@@ -1895,3 +2036,4 @@ root.render(<AuraDashboard />);
 )HTML_DASH";
 
 } // namespace WebTemplates
+

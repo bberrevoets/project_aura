@@ -47,6 +47,7 @@ namespace Config {
     constexpr uint32_t I2C_FREQ_HZ = 100000;
     constexpr uint32_t I2C_TIMEOUT_MS = 50;
     constexpr uint8_t LOG_LEVEL = 3; // 0=error, 1=warn, 2=info, 3=debug
+    constexpr bool LOG_SERIAL_OUTPUT = false;
     constexpr uint32_t MEM_LOG_INTERVAL_MS = 15UL * 60UL * 1000UL;
     constexpr uint32_t SAFE_BOOT_STABLE_MS = 60UL * 1000UL;
     constexpr uint8_t SAFE_BOOT_MAX_REBOOTS = 5;

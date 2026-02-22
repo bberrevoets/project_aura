@@ -131,6 +131,7 @@ void AppInit::initManagersAndConfig(Context &ctx, StorageManager::BootAction boo
     ctx.networkManager.attachThemeContext(ctx.themeManager);
     ctx.networkManager.attachChartsContext(ctx.chartsHistory);
     ctx.networkManager.attachDacContext(ctx.fanControl, ctx.sensorManager, ctx.currentData);
+    ctx.networkManager.attachUiContext(ctx.uiController);
     g_wifi_state_ctx.network = &ctx.networkManager;
     g_wifi_state_ctx.time_manager = &ctx.timeManager;
     g_wifi_state_ctx.ui_controller = &ctx.uiController;

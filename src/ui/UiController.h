@@ -60,6 +60,19 @@ public:
     void mqtt_sync_with_wifi();
     void poll(uint32_t now_ms);
 
+    bool webNightModeEnabled() const { return night_mode; }
+    bool webNightModeLocked() const;
+    bool webBacklightOn() const;
+    bool webUnitsC() const { return temp_units_c; }
+    float webTempOffset() const { return temp_offset; }
+    float webHumOffset() const { return hum_offset; }
+
+    bool webSetNightMode(bool enabled);
+    bool webSetBacklight(bool enabled);
+    bool webSetUnitsC(bool units_c);
+    bool webSetOffsets(float temp_offset_c, float hum_offset_pct);
+    void webRequestRestart();
+
 private:
     friend class UiEventBinder;
     friend class UiBootFlow;

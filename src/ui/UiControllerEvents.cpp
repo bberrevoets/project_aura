@@ -1380,7 +1380,15 @@ void UiController::on_temp_offset_minus(lv_event_t *e) {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
         return;
     }
-    temp_offset -= 0.1f;
+    if (temp_units_c) {
+        temp_offset -= 0.1f;
+    } else {
+        // Keep C as storage, but edit in displayed F offset (0.2F ~= 0.1C step).
+        float offset_f = temp_offset * 9.0f / 5.0f;
+        offset_f -= 0.2f;
+        offset_f = lroundf(offset_f * 10.0f) / 10.0f;
+        temp_offset = offset_f * 5.0f / 9.0f;
+    }
     temp_offset = lroundf(temp_offset * 10.0f) / 10.0f;
     if (temp_offset < -5.0f) {
         temp_offset = -5.0f;
@@ -1394,7 +1402,15 @@ void UiController::on_temp_offset_plus(lv_event_t *e) {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
         return;
     }
-    temp_offset += 0.1f;
+    if (temp_units_c) {
+        temp_offset += 0.1f;
+    } else {
+        // Keep C as storage, but edit in displayed F offset (0.2F ~= 0.1C step).
+        float offset_f = temp_offset * 9.0f / 5.0f;
+        offset_f += 0.2f;
+        offset_f = lroundf(offset_f * 10.0f) / 10.0f;
+        temp_offset = offset_f * 5.0f / 9.0f;
+    }
     temp_offset = lroundf(temp_offset * 10.0f) / 10.0f;
     if (temp_offset > 5.0f) {
         temp_offset = 5.0f;

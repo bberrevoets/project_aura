@@ -23,6 +23,7 @@
 #include "modules/SensorManager.h"
 #include "modules/StorageManager.h"
 #include "web/WebTemplates.h"
+#include "ui/UiController.h"
 #include "ui/ThemeManager.h"
 
 #ifndef APP_VERSION
@@ -38,6 +39,8 @@ bool g_deferred_mqtt_sync = false;
 uint32_t g_deferred_wifi_start_sta_due_ms = 0;
 uint32_t g_deferred_mqtt_sync_due_ms = 0;
 constexpr uint32_t kChartStepS = Config::CHART_HISTORY_STEP_MS / 1000UL;
+constexpr size_t kEventsApiMaxEntries = 48;
+Logger::RecentEntry g_events_snapshot[kEventsApiMaxEntries];
 
 struct ChartMetricSpec {
     const char *key;
@@ -271,6 +274,36 @@ String format_uptime_human(uint32_t uptime_seconds) {
                  static_cast<unsigned long>(minutes));
     }
     return String(buf);
+}
+
+void fill_web_settings_json(ArduinoJson::JsonObject settings, const WebHandlerContext &context) {
+    if (context.ui_controller) {
+        settings["night_mode"] = context.ui_controller->webNightModeEnabled();
+        settings["night_mode_locked"] = context.ui_controller->webNightModeLocked();
+        settings["backlight_on"] = context.ui_controller->webBacklightOn();
+        settings["units_c"] = context.ui_controller->webUnitsC();
+        settings["temp_offset"] = context.ui_controller->webTempOffset();
+        settings["hum_offset"] = context.ui_controller->webHumOffset();
+        return;
+    }
+
+    if (context.storage) {
+        const auto &cfg = context.storage->config();
+        settings["night_mode"] = cfg.night_mode;
+        settings["night_mode_locked"] = cfg.auto_night_enabled;
+        settings["backlight_on"] = nullptr;
+        settings["units_c"] = cfg.units_c;
+        settings["temp_offset"] = cfg.temp_offset;
+        settings["hum_offset"] = cfg.hum_offset;
+        return;
+    }
+
+    settings["night_mode"] = nullptr;
+    settings["night_mode_locked"] = nullptr;
+    settings["backlight_on"] = nullptr;
+    settings["units_c"] = nullptr;
+    settings["temp_offset"] = nullptr;
+    settings["hum_offset"] = nullptr;
 }
 
 } // namespace
@@ -1109,10 +1142,121 @@ void state_handle_data() {
     system["build_date"] = __DATE__;
     system["build_time"] = __TIME__;
     system["uptime"] = format_uptime_human(uptime_s);
+    system["dac_available"] = context->fan_control && context->fan_control->isAvailable();
+
+    ArduinoJson::JsonObject settings = doc["settings"].to<ArduinoJson::JsonObject>();
+    fill_web_settings_json(settings, *context);
 
     String json;
     serializeJson(doc, json);
     server.send(200, "application/json", json);
+}
+
+void settings_handle_update() {
+    WebHandlerContext *context = ctx();
+    if (!context || !context->server) {
+        return;
+    }
+
+    WebServer &server = *context->server;
+    if (!context->ui_controller) {
+        server.send(503, "text/plain", "UI controller unavailable");
+        return;
+    }
+    String body = server.arg("plain");
+    if (body.isEmpty()) {
+        server.send(400, "text/plain", "Missing body");
+        return;
+    }
+
+    ArduinoJson::JsonDocument doc;
+    ArduinoJson::DeserializationError err = ArduinoJson::deserializeJson(doc, body);
+    if (err) {
+        server.send(400, "text/plain", "Invalid JSON");
+        return;
+    }
+
+    UiController &ui = *context->ui_controller;
+
+    ArduinoJson::JsonVariantConst night_mode_var = doc["night_mode"];
+    if (!night_mode_var.isNull()) {
+        if (!night_mode_var.is<bool>()) {
+            server.send(400, "text/plain", "night_mode must be bool");
+            return;
+        }
+        if (!ui.webSetNightMode(night_mode_var.as<bool>())) {
+            server.send(409, "text/plain", "night_mode is locked by auto mode");
+            return;
+        }
+    }
+
+    ArduinoJson::JsonVariantConst backlight_var = doc["backlight_on"];
+    if (!backlight_var.isNull()) {
+        if (!backlight_var.is<bool>()) {
+            server.send(400, "text/plain", "backlight_on must be bool");
+            return;
+        }
+        ui.webSetBacklight(backlight_var.as<bool>());
+    }
+
+    ArduinoJson::JsonVariantConst units_c_var = doc["units_c"];
+    if (!units_c_var.isNull()) {
+        if (!units_c_var.is<bool>()) {
+            server.send(400, "text/plain", "units_c must be bool");
+            return;
+        }
+        ui.webSetUnitsC(units_c_var.as<bool>());
+    }
+
+    const ArduinoJson::JsonVariantConst temp_offset_var = doc["temp_offset"];
+    const ArduinoJson::JsonVariantConst hum_offset_var = doc["hum_offset"];
+    const bool has_temp_offset = !temp_offset_var.isNull();
+    const bool has_hum_offset = !hum_offset_var.isNull();
+    if (has_temp_offset || has_hum_offset) {
+        float temp_offset = ui.webTempOffset();
+        float hum_offset = ui.webHumOffset();
+
+        if (has_temp_offset) {
+            if (!temp_offset_var.is<float>() && !temp_offset_var.is<int>()) {
+                server.send(400, "text/plain", "temp_offset must be number");
+                return;
+            }
+            temp_offset = temp_offset_var.as<float>();
+        }
+        if (has_hum_offset) {
+            if (!hum_offset_var.is<float>() && !hum_offset_var.is<int>()) {
+                server.send(400, "text/plain", "hum_offset must be number");
+                return;
+            }
+            hum_offset = hum_offset_var.as<float>();
+        }
+
+        ui.webSetOffsets(temp_offset, hum_offset);
+    }
+
+    bool restart_requested = false;
+    ArduinoJson::JsonVariantConst restart_var = doc["restart"];
+    if (!restart_var.isNull()) {
+        if (!restart_var.is<bool>()) {
+            server.send(400, "text/plain", "restart must be bool");
+            return;
+        }
+        restart_requested = restart_var.as<bool>();
+    }
+
+    ArduinoJson::JsonDocument response_doc;
+    response_doc["success"] = true;
+    response_doc["restart"] = restart_requested;
+    ArduinoJson::JsonObject response_settings = response_doc["settings"].to<ArduinoJson::JsonObject>();
+    fill_web_settings_json(response_settings, *context);
+
+    String json;
+    serializeJson(response_doc, json);
+    server.send(200, "application/json", json);
+
+    if (restart_requested) {
+        ui.webRequestRestart();
+    }
 }
 
 void events_handle_data() {
@@ -1122,24 +1266,30 @@ void events_handle_data() {
     }
 
     WebServer &server = *context->server;
-    Logger::RecentEntry entries[48];
-    const size_t count = Logger::copyRecent(entries, sizeof(entries) / sizeof(entries[0]));
+    const size_t count = Logger::copyRecent(g_events_snapshot, kEventsApiMaxEntries);
 
     ArduinoJson::JsonDocument doc;
     doc["success"] = true;
+    uint32_t emitted_count = 0;
     doc["count"] = static_cast<uint32_t>(count);
     doc["uptime_s"] = millis() / 1000UL;
 
     ArduinoJson::JsonArray events = doc["events"].to<ArduinoJson::JsonArray>();
     for (size_t i = 0; i < count; ++i) {
-        const Logger::RecentEntry &entry = entries[i];
+        const Logger::RecentEntry &entry = g_events_snapshot[i];
+        // Keep memory telemetry in serial monitor, but hide it from web Events feed.
+        if (strcmp(entry.tag, "Mem") == 0) {
+            continue;
+        }
         ArduinoJson::JsonObject e = events.add<ArduinoJson::JsonObject>();
         e["ts_ms"] = entry.ms;
         e["level"] = event_level_text(entry.level);
         e["severity"] = event_severity_text(entry.level);
         e["type"] = entry.tag[0] ? entry.tag : "SYSTEM";
         e["message"] = entry.message[0] ? entry.message : "Event";
+        emitted_count++;
     }
+    doc["count"] = emitted_count;
 
     String json;
     serializeJson(doc, json);

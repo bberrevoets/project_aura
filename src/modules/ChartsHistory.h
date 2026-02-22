@@ -90,5 +90,6 @@ private:
 
     uint32_t last_sample_ms_ = 0;
     uint32_t last_save_ms_ = 0;
+    bool first_update_after_load_ = true;
     PersistedState state_{};
 };

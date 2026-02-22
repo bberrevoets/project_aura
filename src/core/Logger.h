@@ -29,6 +29,8 @@ public:
     static void begin(HardwareSerial &serial = Serial, Level level = Info);
     static void setLevel(Level level);
     static Level level();
+    static void setSerialOutputEnabled(bool enabled);
+    static bool serialOutputEnabled();
     static void log(Level level, const char *tag, const char *fmt, ...);
     static size_t copyRecent(RecentEntry *out, size_t max_entries);
 
@@ -39,6 +41,7 @@ private:
 
     static HardwareSerial *serial_;
     static Level level_;
+    static bool serial_output_enabled_;
     static constexpr size_t kRecentCapacity = 64;
     static RecentEntry recent_[kRecentCapacity];
     static size_t recent_head_;

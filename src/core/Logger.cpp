@@ -16,6 +16,7 @@ constexpr uint32_t kRecentDedupWindowMs = 30000;
 
 HardwareSerial *Logger::serial_ = &Serial;
 Logger::Level Logger::level_ = Logger::Info;
+bool Logger::serial_output_enabled_ = true;
 Logger::RecentEntry Logger::recent_[Logger::kRecentCapacity];
 size_t Logger::recent_head_ = 0;
 size_t Logger::recent_count_ = 0;
@@ -31,6 +32,14 @@ void Logger::setLevel(Level level) {
 
 Logger::Level Logger::level() {
     return level_;
+}
+
+void Logger::setSerialOutputEnabled(bool enabled) {
+    serial_output_enabled_ = enabled;
+}
+
+bool Logger::serialOutputEnabled() {
+    return serial_output_enabled_;
 }
 
 const char *Logger::levelName(Level level) {
@@ -63,7 +72,7 @@ void Logger::vlog(Level level, const char *tag, const char *fmt, va_list args) {
     char buffer[kLogBufferSize];
     vsnprintf(buffer, sizeof(buffer), fmt, args);
 
-    if (serial_) {
+    if (serial_ && serial_output_enabled_) {
         serial_->print('[');
         serial_->print(levelName(level));
         serial_->print(']');

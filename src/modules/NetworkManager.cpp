@@ -167,6 +167,10 @@ void AuraNetworkManager::attachDacContext(FanControl &fanControl,
     web_ctx_.sensor_data = &sensorData;
 }
 
+void AuraNetworkManager::attachUiContext(UiController &uiController) {
+    web_ctx_.ui_controller = &uiController;
+}
+
 void AuraNetworkManager::registerServerRoutes() {
     if (server_routes_registered_) {
         return;
@@ -187,6 +191,7 @@ void AuraNetworkManager::registerServerRoutes() {
     server_.on("/api/charts", HTTP_GET, charts_handle_data);
     server_.on("/api/state", HTTP_GET, state_handle_data);
     server_.on("/api/events", HTTP_GET, events_handle_data);
+    server_.on("/api/settings", HTTP_POST, settings_handle_update);
     server_.onNotFound(wifi_handle_not_found);
     server_routes_registered_ = true;
 }

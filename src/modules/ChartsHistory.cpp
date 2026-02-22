@@ -53,6 +53,7 @@ void ChartsHistory::reset(StorageManager &storage, bool clear_storage) {
     state_.version = kChartsHistoryVersion;
     last_sample_ms_ = 0;
     last_save_ms_ = 0;
+    first_update_after_load_ = true;
     if (clear_storage) {
         storage.removeBlob(StorageManager::kChartsPath);
     }
@@ -89,6 +90,7 @@ void ChartsHistory::load(StorageManager &storage) {
     }
 
     last_sample_ms_ = millis() - Config::CHART_HISTORY_STEP_MS;
+    first_update_after_load_ = true;
     Logger::log(Logger::Info, "ChartsHistory",
                 "restored count=%u idx=%u epoch=%u",
                 static_cast<unsigned>(state_.count),
@@ -238,20 +240,26 @@ void ChartsHistory::update(const SensorData &data, StorageManager &storage) {
         } else {
             uint32_t delta_s = now_epoch - state_.epoch;
             if (delta_s < step_s) {
-                return;
-            }
-            uint32_t steps = delta_s / step_s;
-            if (steps > 1) {
-                appendGapPoints(steps - 1, sample);
+                if (!first_update_after_load_) {
+                    return;
+                }
+            } else {
+                uint32_t steps = delta_s / step_s;
+                if (steps > 1) {
+                    appendGapPoints(steps - 1, sample);
+                }
             }
         }
     } else if (now_ms - last_sample_ms_ < step_ms) {
-        return;
+        if (!first_update_after_load_) {
+            return;
+        }
     }
 
     last_sample_ms_ = now_ms;
     appendSample(sample);
     state_.epoch = time_valid ? now_epoch : 0;
+    first_update_after_load_ = false;
 
     saveIfDue(storage, now_ms);
 }
