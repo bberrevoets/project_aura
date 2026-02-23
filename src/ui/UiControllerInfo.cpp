@@ -113,6 +113,10 @@ void UiController::update_sensor_info_ui() {
             safe_label_set_text(objects.label_sensor_info_unit, unit);
             lv_color_t hcho_col = getHCHOColor(currentData.hcho, currentData.hcho_valid);
             set_dot_color(objects.dot_sensor_info, alert_color_for_mode(hcho_col));
+            set_hcho_info_mode(hcho_graph_mode_);
+            if (hcho_graph_mode_) {
+                update_hcho_info_graph();
+            }
             break;
         }
         case INFO_CO2: {
@@ -468,6 +472,7 @@ void UiController::restore_sensor_info_selection() {
                 unit = UiText::UnitPpb();
             }
             safe_label_set_text(objects.label_sensor_info_unit, unit);
+            set_hcho_info_mode(hcho_graph_mode_);
             update_sensor_info_ui();
             break;
         }
@@ -653,6 +658,8 @@ void UiController::hide_all_sensor_info_containers() {
     set_visible(objects.nox_info_thresholds, false);
     set_visible(objects.nox_info_graph, false);
     set_visible(objects.hcho_info, false);
+    set_visible(objects.hcho_info_thresholds, false);
+    set_visible(objects.hcho_info_graph, false);
     set_visible(objects.co_info, false);
     set_visible(objects.humidity_info_rh_ah, false);
     set_visible(objects.humidity_info_mr_dp, false);

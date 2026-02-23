@@ -157,11 +157,13 @@ private:
     void set_rh_info_mode(bool graph_mode);
     void set_voc_info_mode(bool graph_mode);
     void set_nox_info_mode(bool graph_mode);
+    void set_hcho_info_mode(bool graph_mode);
     void set_co2_info_mode(bool graph_mode);
     void set_pressure_info_mode(bool graph_mode);
     uint16_t humidity_graph_points() const;
     uint16_t voc_graph_points() const;
     uint16_t nox_graph_points() const;
+    uint16_t hcho_graph_points() const;
     uint16_t co2_graph_points() const;
     uint16_t pressure_graph_points() const;
     SensorGraphProfile build_temperature_graph_profile() const;
@@ -171,6 +173,7 @@ private:
     void update_humidity_info_graph();
     void update_voc_info_graph();
     void update_nox_info_graph();
+    void update_hcho_info_graph();
     void update_co2_info_graph();
     void update_pressure_info_graph();
     void ensure_temperature_graph_overlays();
@@ -210,6 +213,15 @@ private:
     void update_nox_zone_overlay(float y_min_display, float y_max_display);
     void ensure_nox_time_labels();
     void update_nox_time_labels();
+    void ensure_hcho_graph_overlays();
+    void update_hcho_graph_overlays(bool has_values,
+                                    float min_hcho,
+                                    float max_hcho,
+                                    float latest_hcho);
+    void ensure_hcho_zone_overlay();
+    void update_hcho_zone_overlay(float y_min_display, float y_max_display);
+    void ensure_hcho_time_labels();
+    void update_hcho_time_labels();
     void ensure_co2_graph_overlays();
     void update_co2_graph_overlays(bool has_values,
                                    float min_co2,
@@ -415,6 +427,9 @@ private:
     void on_nox_range_1h_event(lv_event_t *e);
     void on_nox_range_3h_event(lv_event_t *e);
     void on_nox_range_24h_event(lv_event_t *e);
+    void on_hcho_range_1h_event(lv_event_t *e);
+    void on_hcho_range_3h_event(lv_event_t *e);
+    void on_hcho_range_24h_event(lv_event_t *e);
     void on_co2_range_1h_event(lv_event_t *e);
     void on_co2_range_3h_event(lv_event_t *e);
     void on_co2_range_24h_event(lv_event_t *e);
@@ -550,6 +565,9 @@ private:
     static void on_nox_range_1h_event_cb(lv_event_t *e);
     static void on_nox_range_3h_event_cb(lv_event_t *e);
     static void on_nox_range_24h_event_cb(lv_event_t *e);
+    static void on_hcho_range_1h_event_cb(lv_event_t *e);
+    static void on_hcho_range_3h_event_cb(lv_event_t *e);
+    static void on_hcho_range_24h_event_cb(lv_event_t *e);
     static void on_co2_range_1h_event_cb(lv_event_t *e);
     static void on_co2_range_3h_event_cb(lv_event_t *e);
     static void on_co2_range_24h_event_cb(lv_event_t *e);
@@ -684,6 +702,8 @@ private:
     TempGraphRange voc_graph_range_ = TEMP_GRAPH_RANGE_3H;
     bool nox_graph_mode_ = false;
     TempGraphRange nox_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    bool hcho_graph_mode_ = false;
+    TempGraphRange hcho_graph_range_ = TEMP_GRAPH_RANGE_3H;
     bool co2_graph_mode_ = false;
     TempGraphRange co2_graph_range_ = TEMP_GRAPH_RANGE_3H;
     bool pressure_graph_mode_ = false;
@@ -712,6 +732,12 @@ private:
     lv_obj_t *nox_graph_zone_overlay_ = nullptr;
     lv_obj_t *nox_graph_zone_bands_[kMaxGraphZoneBands] = {};
     lv_obj_t *nox_graph_time_labels_[7] = {};
+    lv_obj_t *hcho_graph_label_min_ = nullptr;
+    lv_obj_t *hcho_graph_label_now_ = nullptr;
+    lv_obj_t *hcho_graph_label_max_ = nullptr;
+    lv_obj_t *hcho_graph_zone_overlay_ = nullptr;
+    lv_obj_t *hcho_graph_zone_bands_[kMaxGraphZoneBands] = {};
+    lv_obj_t *hcho_graph_time_labels_[7] = {};
     lv_obj_t *co2_graph_label_min_ = nullptr;
     lv_obj_t *co2_graph_label_now_ = nullptr;
     lv_obj_t *co2_graph_label_max_ = nullptr;
