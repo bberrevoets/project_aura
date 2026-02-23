@@ -266,11 +266,17 @@ void UiController::update_sensor_info_ui() {
             }
             break;
         }
-        case INFO_PM25: {
-            if (currentData.pm25_valid) {
+        case INFO_PM25:
+        case INFO_PM4: {
+            const bool pm4_selected = info_sensor == INFO_PM4;
+            const float value = pm4_selected ? currentData.pm4 : currentData.pm25;
+            const bool value_valid = pm4_selected
+                ? (currentData.pm4_valid && isfinite(currentData.pm4) && currentData.pm4 >= 0.0f)
+                : (currentData.pm25_valid && isfinite(currentData.pm25) && currentData.pm25 >= 0.0f);
+            if (value_valid) {
                 char buf[16];
-                if (currentData.pm25 < 10.0f) snprintf(buf, sizeof(buf), "%.1f", currentData.pm25);
-                else snprintf(buf, sizeof(buf), "%.0f", currentData.pm25);
+                if (value < 10.0f) snprintf(buf, sizeof(buf), "%.1f", value);
+                else snprintf(buf, sizeof(buf), "%.0f", value);
                 safe_label_set_text(objects.label_sensor_value, buf);
             } else {
                 safe_label_set_text(objects.label_sensor_value, UiText::ValueMissing());
@@ -282,8 +288,14 @@ void UiController::update_sensor_info_ui() {
                 unit = "ug/m3";
             }
             safe_label_set_text(objects.label_sensor_info_unit, unit);
-            lv_color_t pm25_col = currentData.pm25_valid ? getPM25Color(currentData.pm25) : color_inactive();
-            set_dot_color(objects.dot_sensor_info, alert_color_for_mode(pm25_col));
+            lv_color_t pm_col = value_valid
+                ? (pm4_selected ? getPM4Color(value) : getPM25Color(value))
+                : color_inactive();
+            set_dot_color(objects.dot_sensor_info, alert_color_for_mode(pm_col));
+            set_pm25_4_info_mode(pm25_4_graph_mode_);
+            if (pm25_4_graph_mode_) {
+                update_pm25_4_info_graph();
+            }
             break;
         }
         case INFO_PM10: {
@@ -517,6 +529,7 @@ void UiController::restore_sensor_info_selection() {
             break;
         case INFO_PM05:
         case INFO_PM25:
+        case INFO_PM4:
         case INFO_PM10:
         case INFO_PM1:
         case INFO_CO:
@@ -589,19 +602,37 @@ void UiController::select_pm_info(InfoSensor sensor) {
     }
 
     set_visible(objects.pm_info, true);
+    const bool pm25_pm4_group = (sensor == INFO_PM25) || (sensor == INFO_PM4);
     const bool pm1_pm10_group = (sensor == INFO_PM1) || (sensor == INFO_PM10);
     set_visible(objects.pm1_pm10_info, pm1_pm10_group);
     set_visible(objects.pm05_info, sensor == INFO_PM05);
-    set_visible(objects.pm25_info, sensor == INFO_PM25);
+    set_visible(objects.pm25_info, pm25_pm4_group);
     set_visible(objects.pm10_info, sensor == INFO_PM10);
     set_visible(objects.pm1_info, sensor == INFO_PM1);
     set_visible(objects.pm05_info_graph, false);
+    set_visible(objects.pm25_4_graph, false);
     set_visible(objects.pm1_10_info_graph, false);
     set_visible(objects.pm05_info_thresholds, sensor == INFO_PM05);
+    set_visible(objects.pm25_info_thresholds, sensor == INFO_PM25);
+    set_visible(objects.pm4_info_thresholds, sensor == INFO_PM4);
+    set_visible(objects.label_pm25_text, sensor == INFO_PM25);
+    set_visible(objects.label_pm4_text, sensor == INFO_PM4);
     set_visible(objects.pm1_info_thresholds, sensor == INFO_PM1);
     set_visible(objects.pm10_info_thresholds, sensor == INFO_PM10);
     if (sensor == INFO_PM05) {
         set_pm05_info_mode(pm05_graph_mode_);
+    }
+    if (pm25_pm4_group) {
+        auto set_checked = [](lv_obj_t *btn, bool checked) {
+            if (!btn) return;
+            if (checked) lv_obj_add_state(btn, LV_STATE_CHECKED);
+            else lv_obj_clear_state(btn, LV_STATE_CHECKED);
+        };
+        set_checked(objects.btn_pm25_info, sensor == INFO_PM25);
+        set_checked(objects.btn_pm4_info, sensor == INFO_PM4);
+        if (objects.btn_pm25_info) lv_obj_move_foreground(objects.btn_pm25_info);
+        if (objects.btn_pm4_info) lv_obj_move_foreground(objects.btn_pm4_info);
+        set_pm25_4_info_mode(pm25_4_graph_mode_);
     }
     if (pm1_pm10_group) {
         auto set_checked = [](lv_obj_t *btn, bool checked) {
@@ -622,6 +653,8 @@ void UiController::select_pm_info(InfoSensor sensor) {
             safe_label_set_text(objects.label_sensor_info_title, "PM0.5");
         } else if (sensor == INFO_PM25) {
             safe_label_set_text(objects.label_sensor_info_title, "PM2.5");
+        } else if (sensor == INFO_PM4) {
+            safe_label_set_text(objects.label_sensor_info_title, "PM4");
         } else if (sensor == INFO_PM10) {
             safe_label_set_text(objects.label_sensor_info_title, "PM10");
         } else if (sensor == INFO_PM1) {
@@ -710,6 +743,9 @@ void UiController::hide_all_sensor_info_containers() {
     set_visible(objects.pm10_info, false);
     set_visible(objects.pm10_info_thresholds, false);
     set_visible(objects.pm25_info, false);
+    set_visible(objects.pm25_info_thresholds, false);
+    set_visible(objects.pm4_info_thresholds, false);
+    set_visible(objects.pm25_4_graph, false);
     set_visible(objects.pm1_info, false);
     set_visible(objects.pm1_info_thresholds, false);
 }

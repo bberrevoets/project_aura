@@ -135,6 +135,9 @@ void UiController::on_co2_range_24h_event_cb(lv_event_t *e) { if (instance_) ins
 void UiController::on_pm05_range_1h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm05_range_1h_event(e); }
 void UiController::on_pm05_range_3h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm05_range_3h_event(e); }
 void UiController::on_pm05_range_24h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm05_range_24h_event(e); }
+void UiController::on_pm25_4_range_1h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm25_4_range_1h_event(e); }
+void UiController::on_pm25_4_range_3h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm25_4_range_3h_event(e); }
+void UiController::on_pm25_4_range_24h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm25_4_range_24h_event(e); }
 void UiController::on_pm1_10_range_1h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm1_10_range_1h_event(e); }
 void UiController::on_pm1_10_range_3h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm1_10_range_3h_event(e); }
 void UiController::on_pm1_10_range_24h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm1_10_range_24h_event(e); }
@@ -144,6 +147,8 @@ void UiController::on_co_range_24h_event_cb(lv_event_t *e) { if (instance_) inst
 void UiController::on_pressure_range_1h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pressure_range_1h_event(e); }
 void UiController::on_pressure_range_3h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pressure_range_3h_event(e); }
 void UiController::on_pressure_range_24h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pressure_range_24h_event(e); }
+void UiController::on_pm25_info_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm25_info_event(e); }
+void UiController::on_pm4_info_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm4_info_event(e); }
 void UiController::on_pm10_info_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm10_info_event(e); }
 void UiController::on_pm1_info_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm1_info_event(e); }
 void UiController::on_card_pm05_event_cb(lv_event_t *e) { if (instance_) instance_->on_card_pm05_event(e); }
@@ -817,7 +822,7 @@ void UiController::on_info_graph_event(lv_event_t *e) {
         return;
     }
     LOGD("UI",
-         "info/graph pressed, code=%d info_sensor=%d temp_mode=%d rh_mode=%d voc_mode=%d nox_mode=%d hcho_mode=%d co2_mode=%d pm05_mode=%d pm_mode=%d co_mode=%d pressure_mode=%d",
+         "info/graph pressed, code=%d info_sensor=%d temp_mode=%d rh_mode=%d voc_mode=%d nox_mode=%d hcho_mode=%d co2_mode=%d pm05_mode=%d pm25_4_mode=%d pm_mode=%d co_mode=%d pressure_mode=%d",
          static_cast<int>(code),
          static_cast<int>(info_sensor),
          temp_graph_mode_ ? 1 : 0,
@@ -827,6 +832,7 @@ void UiController::on_info_graph_event(lv_event_t *e) {
          hcho_graph_mode_ ? 1 : 0,
          co2_graph_mode_ ? 1 : 0,
          pm05_graph_mode_ ? 1 : 0,
+         pm25_4_graph_mode_ ? 1 : 0,
          pm1_10_graph_mode_ ? 1 : 0,
          co_graph_mode_ ? 1 : 0,
          pressure_graph_mode_ ? 1 : 0);
@@ -845,6 +851,8 @@ void UiController::on_info_graph_event(lv_event_t *e) {
         set_co2_info_mode(!co2_graph_mode_);
     } else if (info_sensor == INFO_PM05) {
         set_pm05_info_mode(!pm05_graph_mode_);
+    } else if (info_sensor == INFO_PM25 || info_sensor == INFO_PM4) {
+        set_pm25_4_info_mode(!pm25_4_graph_mode_);
     } else if (info_sensor == INFO_PM1 || info_sensor == INFO_PM10) {
         set_pm1_10_info_mode(!pm1_10_graph_mode_);
     } else if (info_sensor == INFO_CO) {
@@ -1172,6 +1180,48 @@ void UiController::on_pm05_range_24h_event(lv_event_t *e) {
     update_sensor_info_ui();
 }
 
+void UiController::on_pm25_4_range_1h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "pm25_4 range 1h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_PM25 && info_sensor != INFO_PM4) {
+        select_pm_info(INFO_PM25);
+    }
+    pm25_4_graph_range_ = TEMP_GRAPH_RANGE_1H;
+    set_pm25_4_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_pm25_4_range_3h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "pm25_4 range 3h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_PM25 && info_sensor != INFO_PM4) {
+        select_pm_info(INFO_PM25);
+    }
+    pm25_4_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    set_pm25_4_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_pm25_4_range_24h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "pm25_4 range 24h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_PM25 && info_sensor != INFO_PM4) {
+        select_pm_info(INFO_PM25);
+    }
+    pm25_4_graph_range_ = TEMP_GRAPH_RANGE_24H;
+    set_pm25_4_info_mode(true);
+    update_sensor_info_ui();
+}
+
 void UiController::on_pm1_10_range_1h_event(lv_event_t *e) {
     const lv_event_code_t code = lv_event_get_code(e);
     if (code != LV_EVENT_VALUE_CHANGED) {
@@ -1296,6 +1346,22 @@ void UiController::on_pressure_range_24h_event(lv_event_t *e) {
     pressure_graph_range_ = TEMP_GRAPH_RANGE_24H;
     set_pressure_info_mode(true);
     update_sensor_info_ui();
+}
+
+void UiController::on_pm25_info_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_CLICKED && code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    select_pm_info(INFO_PM25);
+}
+
+void UiController::on_pm4_info_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_CLICKED && code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    select_pm_info(INFO_PM4);
 }
 
 void UiController::on_pm10_info_event(lv_event_t *e) {

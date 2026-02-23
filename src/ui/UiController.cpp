@@ -717,6 +717,13 @@ lv_color_t UiController::getPM25Color(float pm) {
     return color_red();
 }
 
+lv_color_t UiController::getPM4Color(float pm) {
+    if (pm <= AQ_PM4_GREEN_MAX_UGM3) return color_green();
+    if (pm <= AQ_PM4_YELLOW_MAX_UGM3) return color_yellow();
+    if (pm <= AQ_PM4_ORANGE_MAX_UGM3) return color_orange();
+    return color_red();
+}
+
 lv_color_t UiController::getPM10Color(float pm) {
     if (pm <= 54.0f) return color_green();
     if (pm <= 154.0f) return color_yellow();
@@ -1500,6 +1507,18 @@ void UiController::init_ui_defaults() {
     if (objects.btn_pm05_range_24h) {
         lv_obj_add_flag(objects.btn_pm05_range_24h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
         lv_obj_set_ext_click_area(objects.btn_pm05_range_24h, 12);
+    }
+    if (objects.btn_pm25_4_range_1h) {
+        lv_obj_add_flag(objects.btn_pm25_4_range_1h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_pm25_4_range_1h, 12);
+    }
+    if (objects.btn_pm25_4_range_3h) {
+        lv_obj_add_flag(objects.btn_pm25_4_range_3h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_pm25_4_range_3h, 12);
+    }
+    if (objects.btn_pm25_4_range_24h) {
+        lv_obj_add_flag(objects.btn_pm25_4_range_24h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_pm25_4_range_24h, 12);
     }
     if (objects.btn_pm1_10_range_1h) {
         lv_obj_add_flag(objects.btn_pm1_10_range_1h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);

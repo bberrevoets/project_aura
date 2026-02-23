@@ -102,6 +102,7 @@ private:
         INFO_DP,
         INFO_PM05,
         INFO_PM25,
+        INFO_PM4,
         INFO_PM10,
         INFO_PM1,
         INFO_CO,
@@ -161,6 +162,7 @@ private:
     void set_co2_info_mode(bool graph_mode);
     void set_co_info_mode(bool graph_mode);
     void set_pm05_info_mode(bool graph_mode);
+    void set_pm25_4_info_mode(bool graph_mode);
     void set_pm1_10_info_mode(bool graph_mode);
     void set_pressure_info_mode(bool graph_mode);
     uint16_t humidity_graph_points() const;
@@ -170,6 +172,7 @@ private:
     uint16_t co2_graph_points() const;
     uint16_t co_graph_points() const;
     uint16_t pm05_graph_points() const;
+    uint16_t pm25_4_graph_points() const;
     uint16_t pm1_10_graph_points() const;
     uint16_t pressure_graph_points() const;
     SensorGraphProfile build_temperature_graph_profile() const;
@@ -183,6 +186,7 @@ private:
     void update_co2_info_graph();
     void update_co_info_graph();
     void update_pm05_info_graph();
+    void update_pm25_4_info_graph();
     void update_pm1_10_info_graph();
     void update_pressure_info_graph();
     void ensure_temperature_graph_overlays();
@@ -258,6 +262,15 @@ private:
     void update_pm05_zone_overlay(float y_min_display, float y_max_display);
     void ensure_pm05_time_labels();
     void update_pm05_time_labels();
+    void ensure_pm25_4_graph_overlays();
+    void update_pm25_4_graph_overlays(bool has_values,
+                                      float min_value,
+                                      float max_value,
+                                      float latest_value);
+    void ensure_pm25_4_zone_overlay();
+    void update_pm25_4_zone_overlay(float y_min_display, float y_max_display);
+    void ensure_pm25_4_time_labels();
+    void update_pm25_4_time_labels();
     void ensure_pm1_10_graph_overlays();
     void update_pm1_10_graph_overlays(bool has_values,
                                       float min_value,
@@ -318,6 +331,7 @@ private:
     lv_color_t getCOColor(float co_ppm);
     lv_color_t getPM05Color(float pm);
     lv_color_t getPM25Color(float pm);
+    lv_color_t getPM4Color(float pm);
     lv_color_t getPM10Color(float pm);
     lv_color_t getPM1Color(float pm);
     lv_color_t getPressureDeltaColor(float delta, bool valid, bool is24h);
@@ -472,6 +486,9 @@ private:
     void on_pm05_range_1h_event(lv_event_t *e);
     void on_pm05_range_3h_event(lv_event_t *e);
     void on_pm05_range_24h_event(lv_event_t *e);
+    void on_pm25_4_range_1h_event(lv_event_t *e);
+    void on_pm25_4_range_3h_event(lv_event_t *e);
+    void on_pm25_4_range_24h_event(lv_event_t *e);
     void on_pm1_10_range_1h_event(lv_event_t *e);
     void on_pm1_10_range_3h_event(lv_event_t *e);
     void on_pm1_10_range_24h_event(lv_event_t *e);
@@ -481,6 +498,8 @@ private:
     void on_pressure_range_1h_event(lv_event_t *e);
     void on_pressure_range_3h_event(lv_event_t *e);
     void on_pressure_range_24h_event(lv_event_t *e);
+    void on_pm25_info_event(lv_event_t *e);
+    void on_pm4_info_event(lv_event_t *e);
     void on_pm10_info_event(lv_event_t *e);
     void on_pm1_info_event(lv_event_t *e);
     void on_card_pm05_event(lv_event_t *e);
@@ -619,6 +638,9 @@ private:
     static void on_pm05_range_1h_event_cb(lv_event_t *e);
     static void on_pm05_range_3h_event_cb(lv_event_t *e);
     static void on_pm05_range_24h_event_cb(lv_event_t *e);
+    static void on_pm25_4_range_1h_event_cb(lv_event_t *e);
+    static void on_pm25_4_range_3h_event_cb(lv_event_t *e);
+    static void on_pm25_4_range_24h_event_cb(lv_event_t *e);
     static void on_pm1_10_range_1h_event_cb(lv_event_t *e);
     static void on_pm1_10_range_3h_event_cb(lv_event_t *e);
     static void on_pm1_10_range_24h_event_cb(lv_event_t *e);
@@ -628,6 +650,8 @@ private:
     static void on_pressure_range_1h_event_cb(lv_event_t *e);
     static void on_pressure_range_3h_event_cb(lv_event_t *e);
     static void on_pressure_range_24h_event_cb(lv_event_t *e);
+    static void on_pm25_info_event_cb(lv_event_t *e);
+    static void on_pm4_info_event_cb(lv_event_t *e);
     static void on_pm10_info_event_cb(lv_event_t *e);
     static void on_pm1_info_event_cb(lv_event_t *e);
     static void on_card_pm05_event_cb(lv_event_t *e);
@@ -762,6 +786,8 @@ private:
     TempGraphRange co2_graph_range_ = TEMP_GRAPH_RANGE_3H;
     bool pm05_graph_mode_ = false;
     TempGraphRange pm05_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    bool pm25_4_graph_mode_ = false;
+    TempGraphRange pm25_4_graph_range_ = TEMP_GRAPH_RANGE_3H;
     bool pm1_10_graph_mode_ = false;
     TempGraphRange pm1_10_graph_range_ = TEMP_GRAPH_RANGE_3H;
     bool co_graph_mode_ = false;
@@ -816,6 +842,12 @@ private:
     lv_obj_t *pm05_graph_zone_overlay_ = nullptr;
     lv_obj_t *pm05_graph_zone_bands_[kMaxGraphZoneBands] = {};
     lv_obj_t *pm05_graph_time_labels_[7] = {};
+    lv_obj_t *pm25_4_graph_label_min_ = nullptr;
+    lv_obj_t *pm25_4_graph_label_now_ = nullptr;
+    lv_obj_t *pm25_4_graph_label_max_ = nullptr;
+    lv_obj_t *pm25_4_graph_zone_overlay_ = nullptr;
+    lv_obj_t *pm25_4_graph_zone_bands_[kMaxGraphZoneBands] = {};
+    lv_obj_t *pm25_4_graph_time_labels_[7] = {};
     lv_obj_t *pm1_10_graph_label_min_ = nullptr;
     lv_obj_t *pm1_10_graph_label_now_ = nullptr;
     lv_obj_t *pm1_10_graph_label_max_ = nullptr;

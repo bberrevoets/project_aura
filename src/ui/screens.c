@@ -10411,48 +10411,326 @@ void create_screen_page_sensors_info() {
                             lv_label_set_text(obj, "PM2.5 are fine particles that penetrate deep into lungs and bloodstream. Thresholds based on US EPA Air Quality Index (AQI) and WHO guidelines. Long-term exposure linked to respiratory and cardiovascular disease. Sources: cooking, candles, outdoor pollution,smoking. Keep indoor levels low through air filtration and ventilation.");
                         }
                         {
-                            // label_pm25_excellent
+                            // label_pm4_text
                             lv_obj_t *obj = lv_label_create(parent_obj);
-                            objects.label_pm25_excellent = obj;
-                            lv_obj_set_pos(obj, 41, 155);
-                            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                            objects.label_pm4_text = obj;
+                            lv_obj_set_pos(obj, 20, 17);
+                            lv_obj_set_size(obj, 760, LV_SIZE_CONTENT);
                             lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
                             add_style_style_text_primary(obj);
                             lv_obj_set_style_text_font(obj, &ui_font_jet_reg_18, LV_PART_MAIN | LV_STATE_DEFAULT);
-                            lv_label_set_text(obj, "Excellent: ≤12 µg/m³\nClean air, no health impact");
+                            lv_label_set_text(obj, "PM4 are respirable particles that reach deep into the respiratory system but are filtered by upper airways better than finer particles. Size range includes some pollen fragments, mold spores, and fine dust. Thresholds based on occupational health standards and interpolation between PM2.5 and PM10 guidelines. Relevant for indoor air quality assessment.");
                         }
                         {
-                            // label_pm25_acceptable
-                            lv_obj_t *obj = lv_label_create(parent_obj);
-                            objects.label_pm25_acceptable = obj;
-                            lv_obj_set_pos(obj, 42, 217);
-                            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-                            lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
-                            add_style_style_text_primary(obj);
-                            lv_obj_set_style_text_font(obj, &ui_font_jet_reg_18, LV_PART_MAIN | LV_STATE_DEFAULT);
-                            lv_label_set_text(obj, "Acceptable: >12-35 µg/m³\nSensitive individuals may notice mild irritation");
+                            // pm25_info_thresholds
+                            lv_obj_t *obj = lv_obj_create(parent_obj);
+                            objects.pm25_info_thresholds = obj;
+                            lv_obj_set_pos(obj, 0, 140);
+                            lv_obj_set_size(obj, 800, 268);
+                            lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_pad_right(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_pad_bottom(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_bg_opa(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_radius(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICKABLE);
+                            {
+                                lv_obj_t *parent_obj = obj;
+                                {
+                                    // label_pm25_poor
+                                    lv_obj_t *obj = lv_label_create(parent_obj);
+                                    objects.label_pm25_poor = obj;
+                                    lv_obj_set_pos(obj, 43, 201);
+                                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                                    lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
+                                    add_style_style_text_primary(obj);
+                                    lv_obj_set_style_text_font(obj, &ui_font_jet_reg_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_label_set_text(obj, "Poor: >55 µg/m³\nHealth risk, avoid prolonged exposure, improve ventilation");
+                                }
+                                {
+                                    // label_pm25_uncomfortable
+                                    lv_obj_t *obj = lv_label_create(parent_obj);
+                                    objects.label_pm25_uncomfortable = obj;
+                                    lv_obj_set_pos(obj, 42, 139);
+                                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                                    lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
+                                    add_style_style_text_primary(obj);
+                                    lv_obj_set_style_text_font(obj, &ui_font_jet_reg_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_label_set_text(obj, "Uncomfortable: >35-55 µg/m³\nPossible respiratory discomfort, limit exposure");
+                                }
+                                {
+                                    // label_pm25_acceptable
+                                    lv_obj_t *obj = lv_label_create(parent_obj);
+                                    objects.label_pm25_acceptable = obj;
+                                    lv_obj_set_pos(obj, 43, 78);
+                                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                                    lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
+                                    add_style_style_text_primary(obj);
+                                    lv_obj_set_style_text_font(obj, &ui_font_jet_reg_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_label_set_text(obj, "Acceptable: >12-35 µg/m³\nSensitive individuals may notice mild irritation");
+                                }
+                                {
+                                    // label_pm25_excellent
+                                    lv_obj_t *obj = lv_label_create(parent_obj);
+                                    objects.label_pm25_excellent = obj;
+                                    lv_obj_set_pos(obj, 42, 16);
+                                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                                    lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
+                                    add_style_style_text_primary(obj);
+                                    lv_obj_set_style_text_font(obj, &ui_font_jet_reg_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_label_set_text(obj, "Excellent: ≤12 µg/m³\nClean air, no health impact");
+                                }
+                            }
                         }
                         {
-                            // label_pm25_uncomfortable
-                            lv_obj_t *obj = lv_label_create(parent_obj);
-                            objects.label_pm25_uncomfortable = obj;
-                            lv_obj_set_pos(obj, 41, 278);
-                            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-                            lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
-                            add_style_style_text_primary(obj);
-                            lv_obj_set_style_text_font(obj, &ui_font_jet_reg_18, LV_PART_MAIN | LV_STATE_DEFAULT);
-                            lv_label_set_text(obj, "Uncomfortable: >35-55 µg/m³\nPossible respiratory discomfort, limit exposure");
+                            // pm4_info_thresholds
+                            lv_obj_t *obj = lv_obj_create(parent_obj);
+                            objects.pm4_info_thresholds = obj;
+                            lv_obj_set_pos(obj, 0, 140);
+                            lv_obj_set_size(obj, 800, 268);
+                            lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_pad_right(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_pad_bottom(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_bg_opa(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_radius(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICKABLE);
+                            {
+                                lv_obj_t *parent_obj = obj;
+                                {
+                                    // label_pm4_poor
+                                    lv_obj_t *obj = lv_label_create(parent_obj);
+                                    objects.label_pm4_poor = obj;
+                                    lv_obj_set_pos(obj, 43, 201);
+                                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                                    lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
+                                    add_style_style_text_primary(obj);
+                                    lv_obj_set_style_text_font(obj, &ui_font_jet_reg_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_label_set_text(obj, "Poor: >75 ug/m3\nHealth risk, avoid prolonged exposure, improve ventilation");
+                                }
+                                {
+                                    // label_pm4_uncomfortable
+                                    lv_obj_t *obj = lv_label_create(parent_obj);
+                                    objects.label_pm4_uncomfortable = obj;
+                                    lv_obj_set_pos(obj, 42, 139);
+                                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                                    lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
+                                    add_style_style_text_primary(obj);
+                                    lv_obj_set_style_text_font(obj, &ui_font_jet_reg_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_label_set_text(obj, "Uncomfortable: >50-75 ug/m3\nPossible respiratory discomfort, limit exposure");
+                                }
+                                {
+                                    // label_pm4_acceptable
+                                    lv_obj_t *obj = lv_label_create(parent_obj);
+                                    objects.label_pm4_acceptable = obj;
+                                    lv_obj_set_pos(obj, 43, 78);
+                                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                                    lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
+                                    add_style_style_text_primary(obj);
+                                    lv_obj_set_style_text_font(obj, &ui_font_jet_reg_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_label_set_text(obj, "Acceptable: >25-50 ug/m3\nSensitive individuals may notice mild irritation");
+                                }
+                                {
+                                    // label_pm4_excellent
+                                    lv_obj_t *obj = lv_label_create(parent_obj);
+                                    objects.label_pm4_excellent = obj;
+                                    lv_obj_set_pos(obj, 42, 16);
+                                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                                    lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
+                                    add_style_style_text_primary(obj);
+                                    lv_obj_set_style_text_font(obj, &ui_font_jet_reg_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_label_set_text(obj, "Excellent: <=25 ug/m3\nClean air, no health impact");
+                                }
+                            }
                         }
                         {
-                            // label_pm25_poor
-                            lv_obj_t *obj = lv_label_create(parent_obj);
-                            objects.label_pm25_poor = obj;
-                            lv_obj_set_pos(obj, 42, 340);
-                            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                            // pm25_4_graph
+                            lv_obj_t *obj = lv_obj_create(parent_obj);
+                            objects.pm25_4_graph = obj;
+                            lv_obj_set_pos(obj, 0, 140);
+                            lv_obj_set_size(obj, 800, 268);
+                            lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_pad_right(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_pad_bottom(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_bg_opa(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_radius(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
+                            lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICKABLE);
+                            {
+                                lv_obj_t *parent_obj = obj;
+                                {
+                                    // chart_pm25_4_graph
+                                    lv_obj_t *obj = lv_chart_create(parent_obj);
+                                    objects.chart_pm25_4_graph = obj;
+                                    lv_obj_set_pos(obj, 20, 66);
+                                    lv_obj_set_size(obj, 760, 174);
+                                    lv_obj_set_style_bg_color(obj, lv_color_hex(0xff737373), LV_PART_MAIN | LV_STATE_DEFAULT);
+                                }
+                                {
+                                    // btn_pm25_4_range_1h
+                                    lv_obj_t *obj = lv_obj_create(parent_obj);
+                                    objects.btn_pm25_4_range_1h = obj;
+                                    lv_obj_set_pos(obj, 20, 9);
+                                    lv_obj_set_size(obj, 96, 43);
+                                    lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_obj_set_style_pad_right(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_obj_set_style_pad_bottom(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_obj_add_flag(obj, LV_OBJ_FLAG_CHECKABLE);
+                                    lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
+                                    add_style_style_card_base(obj);
+                                    lv_obj_set_style_border_width(obj, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_obj_set_style_radius(obj, 15, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_obj_set_style_bg_opa(obj, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    {
+                                        lv_obj_t *parent_obj = obj;
+                                        {
+                                            // label_btn_pm25_4_range_1h
+                                            lv_obj_t *obj = lv_label_create(parent_obj);
+                                            objects.label_btn_pm25_4_range_1h = obj;
+                                            lv_obj_set_pos(obj, 22, 10);
+                                            lv_obj_set_size(obj, 48, LV_SIZE_CONTENT);
+                                            lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
+                                            add_style_style_text_primary(obj);
+                                            lv_obj_set_style_text_font(obj, &ui_font_jet_reg_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                            lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                            lv_label_set_text(obj, "1h");
+                                        }
+                                    }
+                                }
+                                {
+                                    // btn_pm25_4_range_3h
+                                    lv_obj_t *obj = lv_obj_create(parent_obj);
+                                    objects.btn_pm25_4_range_3h = obj;
+                                    lv_obj_set_pos(obj, 142, 9);
+                                    lv_obj_set_size(obj, 96, 43);
+                                    lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_obj_set_style_pad_right(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_obj_set_style_pad_bottom(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_obj_add_flag(obj, LV_OBJ_FLAG_CHECKABLE);
+                                    lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
+                                    add_style_style_card_base(obj);
+                                    lv_obj_set_style_border_width(obj, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_obj_set_style_radius(obj, 15, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_obj_set_style_bg_opa(obj, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    {
+                                        lv_obj_t *parent_obj = obj;
+                                        {
+                                            // label_btn_pm25_4_range_3h
+                                            lv_obj_t *obj = lv_label_create(parent_obj);
+                                            objects.label_btn_pm25_4_range_3h = obj;
+                                            lv_obj_set_pos(obj, 22, 10);
+                                            lv_obj_set_size(obj, 48, LV_SIZE_CONTENT);
+                                            lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
+                                            add_style_style_text_primary(obj);
+                                            lv_obj_set_style_text_font(obj, &ui_font_jet_reg_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                            lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                            lv_label_set_text(obj, "3h");
+                                        }
+                                    }
+                                }
+                                {
+                                    // btn_pm25_4_range_24h
+                                    lv_obj_t *obj = lv_obj_create(parent_obj);
+                                    objects.btn_pm25_4_range_24h = obj;
+                                    lv_obj_set_pos(obj, 263, 9);
+                                    lv_obj_set_size(obj, 96, 43);
+                                    lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_obj_set_style_pad_right(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_obj_set_style_pad_bottom(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_obj_add_flag(obj, LV_OBJ_FLAG_CHECKABLE);
+                                    lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
+                                    add_style_style_card_base(obj);
+                                    lv_obj_set_style_border_width(obj, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_obj_set_style_radius(obj, 15, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_obj_set_style_bg_opa(obj, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    {
+                                        lv_obj_t *parent_obj = obj;
+                                        {
+                                            // label_btn_pm25_4_range_24h
+                                            lv_obj_t *obj = lv_label_create(parent_obj);
+                                            objects.label_btn_pm25_4_range_24h = obj;
+                                            lv_obj_set_pos(obj, 22, 10);
+                                            lv_obj_set_size(obj, 48, LV_SIZE_CONTENT);
+                                            lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
+                                            add_style_style_text_primary(obj);
+                                            lv_obj_set_style_text_font(obj, &ui_font_jet_reg_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                            lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                            lv_label_set_text(obj, "24h");
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        {
+                            // btn_pm25_info
+                            lv_obj_t *obj = lv_obj_create(parent_obj);
+                            objects.btn_pm25_info = obj;
+                            lv_obj_set_pos(obj, 608, 151);
+                            lv_obj_set_size(obj, 74, 43);
+                            lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_pad_right(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_pad_bottom(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_add_flag(obj, LV_OBJ_FLAG_CHECKABLE);
                             lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
-                            add_style_style_text_primary(obj);
-                            lv_obj_set_style_text_font(obj, &ui_font_jet_reg_18, LV_PART_MAIN | LV_STATE_DEFAULT);
-                            lv_label_set_text(obj, "Poor: >55 µg/m³\nHealth risk, avoid prolonged exposure, improve ventilation");
+                            add_style_style_card_base(obj);
+                            lv_obj_set_style_border_width(obj, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_radius(obj, 15, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_bg_opa(obj, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            {
+                                lv_obj_t *parent_obj = obj;
+                                {
+                                    // label_btn_pm25_info
+                                    lv_obj_t *obj = lv_label_create(parent_obj);
+                                    objects.label_btn_pm25_info = obj;
+                                    lv_obj_set_pos(obj, 6, 10);
+                                    lv_obj_set_size(obj, 59, LV_SIZE_CONTENT);
+                                    lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
+                                    add_style_style_text_primary(obj);
+                                    lv_obj_set_style_text_font(obj, &ui_font_jet_reg_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_label_set_text(obj, "PM2.5");
+                                }
+                            }
+                        }
+                        {
+                            // btn_pm4_info
+                            lv_obj_t *obj = lv_obj_create(parent_obj);
+                            objects.btn_pm4_info = obj;
+                            lv_obj_set_pos(obj, 706, 151);
+                            lv_obj_set_size(obj, 74, 43);
+                            lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_pad_right(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_pad_bottom(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_add_flag(obj, LV_OBJ_FLAG_CHECKABLE);
+                            lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
+                            add_style_style_card_base(obj);
+                            lv_obj_set_style_border_width(obj, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_radius(obj, 15, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_bg_opa(obj, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            {
+                                lv_obj_t *parent_obj = obj;
+                                {
+                                    // label_btn_pm4_info
+                                    lv_obj_t *obj = lv_label_create(parent_obj);
+                                    objects.label_btn_pm4_info = obj;
+                                    lv_obj_set_pos(obj, 11, 10);
+                                    lv_obj_set_size(obj, 48, LV_SIZE_CONTENT);
+                                    lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
+                                    add_style_style_text_primary(obj);
+                                    lv_obj_set_style_text_font(obj, &ui_font_jet_reg_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_label_set_text(obj, "PM4");
+                                }
+                            }
                         }
                     }
                 }
