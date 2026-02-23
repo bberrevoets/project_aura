@@ -776,9 +776,9 @@ lv_color_t UiController::getNOxColor(int nox) {
 
 lv_color_t UiController::getHCHOColor(float hcho_ppb, bool valid) {
     if (!valid || !isfinite(hcho_ppb) || hcho_ppb < 0.0f) return color_inactive();
-    if (hcho_ppb < 30.0f) return color_green();
-    if (hcho_ppb <= 60.0f) return color_yellow();
-    if (hcho_ppb <= 100.0f) return color_orange();
+    if (hcho_ppb < AQ_HCHO_GREEN_MAX_PPB) return color_green();
+    if (hcho_ppb <= AQ_HCHO_YELLOW_MAX_PPB) return color_yellow();
+    if (hcho_ppb <= AQ_HCHO_ORANGE_MAX_PPB) return color_orange();
     return color_red();
 }
 
@@ -818,7 +818,11 @@ AirQuality UiController::getAirQuality(const SensorData &data) {
     }
 
     if (data.hcho_valid && isfinite(data.hcho) && data.hcho >= 0.0f) {
-        int score = score_from_thresholds(data.hcho, 0.0f, 30.0f, 60.0f, 100.0f);
+        int score = score_from_thresholds(data.hcho,
+                                          0.0f,
+                                          AQ_HCHO_GREEN_MAX_PPB,
+                                          AQ_HCHO_YELLOW_MAX_PPB,
+                                          AQ_HCHO_ORANGE_MAX_PPB);
         max_score = max(max_score, score);
         has_valid = true;
     }

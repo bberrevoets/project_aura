@@ -73,4 +73,4 @@ inline void format_relative_time_label(uint32_t offset_s, char *buf, size_t buf_
     snprintf(buf, buf_size, "-%lum", static_cast<unsigned long>(minutes > 0 ? minutes : 1U));
 }
 
-inline constexpr uint8_t kTempGraphTimeTickCount = 7;
+inline constexpr uint8_t kGraphTimeTickCount = 7;

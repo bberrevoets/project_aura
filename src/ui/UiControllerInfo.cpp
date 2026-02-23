@@ -51,7 +51,8 @@ void UiController::update_sensor_info_ui() {
             lv_color_t temp_col = currentData.temp_valid ? getTempColor(currentData.temperature) : color_inactive();
             set_dot_color(objects.dot_sensor_info, alert_color_for_mode(temp_col));
             set_temperature_info_mode(temp_graph_mode_);
-            if (temp_graph_mode_) {
+            if (temp_graph_mode_ &&
+                should_refresh_active_graph(INFO_TEMP, temp_graph_range_, temperature_graph_points())) {
                 update_temperature_info_graph();
             }
             break;
@@ -71,7 +72,8 @@ void UiController::update_sensor_info_ui() {
                                             : (currentData.voc_valid ? getVOCColor(currentData.voc_index) : color_inactive());
             set_dot_color(objects.dot_sensor_info, gas_warmup ? voc_col : alert_color_for_mode(voc_col));
             set_voc_info_mode(voc_graph_mode_);
-            if (voc_graph_mode_) {
+            if (voc_graph_mode_ &&
+                should_refresh_active_graph(INFO_VOC, voc_graph_range_, voc_graph_points())) {
                 update_voc_info_graph();
             }
             break;
@@ -91,7 +93,8 @@ void UiController::update_sensor_info_ui() {
                                             : (currentData.nox_valid ? getNOxColor(currentData.nox_index) : color_inactive());
             set_dot_color(objects.dot_sensor_info, gas_warmup ? nox_col : alert_color_for_mode(nox_col));
             set_nox_info_mode(nox_graph_mode_);
-            if (nox_graph_mode_) {
+            if (nox_graph_mode_ &&
+                should_refresh_active_graph(INFO_NOX, nox_graph_range_, nox_graph_points())) {
                 update_nox_info_graph();
             }
             break;
@@ -114,7 +117,8 @@ void UiController::update_sensor_info_ui() {
             lv_color_t hcho_col = getHCHOColor(currentData.hcho, currentData.hcho_valid);
             set_dot_color(objects.dot_sensor_info, alert_color_for_mode(hcho_col));
             set_hcho_info_mode(hcho_graph_mode_);
-            if (hcho_graph_mode_) {
+            if (hcho_graph_mode_ &&
+                should_refresh_active_graph(INFO_HCHO, hcho_graph_range_, hcho_graph_points())) {
                 update_hcho_info_graph();
             }
             break;
@@ -137,7 +141,8 @@ void UiController::update_sensor_info_ui() {
             lv_color_t co2_col = currentData.co2_valid ? getCO2Color(currentData.co2) : color_inactive();
             set_dot_color(objects.dot_sensor_info, alert_color_for_mode(co2_col));
             set_co2_info_mode(co2_graph_mode_);
-            if (co2_graph_mode_) {
+            if (co2_graph_mode_ &&
+                should_refresh_active_graph(INFO_CO2, co2_graph_range_, co2_graph_points())) {
                 update_co2_info_graph();
             }
             break;
@@ -157,7 +162,8 @@ void UiController::update_sensor_info_ui() {
             lv_color_t hum_col = currentData.hum_valid ? getHumidityColor(currentData.humidity) : color_inactive();
             set_dot_color(objects.dot_sensor_info, alert_color_for_mode(hum_col));
             set_rh_info_mode(rh_graph_mode_);
-            if (rh_graph_mode_) {
+            if (rh_graph_mode_ &&
+                should_refresh_active_graph(INFO_RH, rh_graph_range_, humidity_graph_points())) {
                 update_humidity_info_graph();
             }
             break;
@@ -261,7 +267,8 @@ void UiController::update_sensor_info_ui() {
             lv_color_t pm05_col = currentData.pm05_valid ? getPM05Color(currentData.pm05) : color_inactive();
             set_dot_color(objects.dot_sensor_info, alert_color_for_mode(pm05_col));
             set_pm05_info_mode(pm05_graph_mode_);
-            if (pm05_graph_mode_) {
+            if (pm05_graph_mode_ &&
+                should_refresh_active_graph(INFO_PM05, pm05_graph_range_, pm05_graph_points())) {
                 update_pm05_info_graph();
             }
             break;
@@ -293,7 +300,8 @@ void UiController::update_sensor_info_ui() {
                 : color_inactive();
             set_dot_color(objects.dot_sensor_info, alert_color_for_mode(pm_col));
             set_pm25_4_info_mode(pm25_4_graph_mode_);
-            if (pm25_4_graph_mode_) {
+            if (pm25_4_graph_mode_ &&
+                should_refresh_active_graph(info_sensor, pm25_4_graph_range_, pm25_4_graph_points())) {
                 update_pm25_4_info_graph();
             }
             break;
@@ -317,7 +325,8 @@ void UiController::update_sensor_info_ui() {
             lv_color_t pm10_col = currentData.pm10_valid ? getPM10Color(currentData.pm10) : color_inactive();
             set_dot_color(objects.dot_sensor_info, alert_color_for_mode(pm10_col));
             set_pm1_10_info_mode(pm1_10_graph_mode_);
-            if (pm1_10_graph_mode_) {
+            if (pm1_10_graph_mode_ &&
+                should_refresh_active_graph(INFO_PM10, pm1_10_graph_range_, pm1_10_graph_points())) {
                 update_pm1_10_info_graph();
             }
             break;
@@ -339,7 +348,8 @@ void UiController::update_sensor_info_ui() {
             lv_color_t pm1_col = pm1_available ? getPM1Color(currentData.pm1) : color_inactive();
             set_dot_color(objects.dot_sensor_info, alert_color_for_mode(pm1_col));
             set_pm1_10_info_mode(pm1_10_graph_mode_);
-            if (pm1_10_graph_mode_) {
+            if (pm1_10_graph_mode_ &&
+                should_refresh_active_graph(INFO_PM1, pm1_10_graph_range_, pm1_10_graph_points())) {
                 update_pm1_10_info_graph();
             }
             break;
@@ -357,7 +367,8 @@ void UiController::update_sensor_info_ui() {
             lv_color_t co_col = co_valid ? getCOColor(currentData.co_ppm) : color_inactive();
             set_dot_color(objects.dot_sensor_info, alert_color_for_mode(co_col));
             set_co_info_mode(co_graph_mode_);
-            if (co_graph_mode_) {
+            if (co_graph_mode_ &&
+                should_refresh_active_graph(INFO_CO, co_graph_range_, co_graph_points())) {
                 update_co_info_graph();
             }
             break;
@@ -413,7 +424,8 @@ void UiController::update_sensor_info_ui() {
             set_chip_color(objects.chip_delta_25, delta_24h_color);
             set_dot_color(objects.dot_sensor_info, delta_3h_color);
             set_pressure_info_mode(pressure_graph_mode_);
-            if (pressure_graph_mode_) {
+            if (pressure_graph_mode_ &&
+                should_refresh_active_graph(info_sensor, pressure_graph_range_, pressure_graph_points())) {
                 update_pressure_info_graph();
             }
             break;
@@ -703,6 +715,7 @@ void UiController::set_visible(lv_obj_t *obj, bool visible) {
 }
 
 void UiController::hide_all_sensor_info_containers() {
+    release_all_sensor_graph_runtime_objects();
     set_visible(objects.temperature_info, false);
     set_visible(objects.temperature_info_thresholds, false);
     set_visible(objects.temperature_info_graph, false);

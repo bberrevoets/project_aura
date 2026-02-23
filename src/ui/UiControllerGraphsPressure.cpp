@@ -64,7 +64,7 @@ void UiController::ensure_pressure_time_labels() {
         objects.pressure_info_graph,
         objects.chart_pressure_info,
         pressure_graph_time_labels_,
-        kTempGraphTimeTickCount);
+        kGraphTimeTickCount);
 }
 
 void UiController::update_pressure_time_labels() {
@@ -72,7 +72,7 @@ void UiController::update_pressure_time_labels() {
         objects.pressure_info_graph,
         objects.chart_pressure_info,
         pressure_graph_time_labels_,
-        kTempGraphTimeTickCount,
+        kGraphTimeTickCount,
         pressure_graph_points());
 }
 
@@ -155,4 +155,5 @@ void UiController::update_pressure_info_graph() {
     update_pressure_time_labels();
 
     lv_chart_refresh(objects.chart_pressure_info);
+    mark_active_graph_refreshed(info_sensor, pressure_graph_range_, points);
 }

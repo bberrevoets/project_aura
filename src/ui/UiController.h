@@ -315,6 +315,11 @@ private:
                                         float latest_pressure);
     void ensure_pressure_time_labels();
     void update_pressure_time_labels();
+    void release_all_sensor_graph_runtime_objects();
+    bool should_refresh_active_graph(InfoSensor sensor, TempGraphRange range, uint16_t points);
+    void mark_active_graph_refreshed(InfoSensor sensor, TempGraphRange range, uint16_t points);
+    void invalidate_active_graph_refresh_cache();
+    uint32_t active_graph_theme_signature();
     uint16_t temperature_graph_points() const;
     void update_sensor_cards(const AirQuality &aq, bool gas_warmup, bool show_co2_bar);
     void update_settings_header();
@@ -822,6 +827,15 @@ private:
     TempGraphRange co_graph_range_ = TEMP_GRAPH_RANGE_3H;
     bool pressure_graph_mode_ = false;
     TempGraphRange pressure_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    InfoSensor graph_refresh_sensor_ = INFO_NONE;
+    TempGraphRange graph_refresh_range_ = TEMP_GRAPH_RANGE_3H;
+    uint16_t graph_refresh_points_ = 0;
+    uint16_t graph_refresh_history_count_ = 0;
+    uint32_t graph_refresh_epoch_ = 0;
+    bool graph_refresh_units_c_ = true;
+    bool graph_refresh_night_mode_ = false;
+    uint32_t graph_refresh_theme_sig_ = 0;
+    uint32_t graph_refresh_last_ms_ = 0;
     lv_obj_t *temp_graph_label_min_ = nullptr;
     lv_obj_t *temp_graph_label_now_ = nullptr;
     lv_obj_t *temp_graph_label_max_ = nullptr;

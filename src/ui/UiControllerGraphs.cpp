@@ -18,6 +18,176 @@
 
 #include "ui/UiControllerGraphsShared.h"
 
+namespace {
+void release_lvgl_obj(lv_obj_t *&obj) {
+    if (obj && lv_obj_is_valid(obj)) {
+        lv_obj_del(obj);
+    }
+    obj = nullptr;
+}
+
+void release_lvgl_obj_array(lv_obj_t **objs, uint8_t count) {
+    if (!objs) {
+        return;
+    }
+    for (uint8_t i = 0; i < count; ++i) {
+        if (objs[i] && lv_obj_is_valid(objs[i])) {
+            lv_obj_del(objs[i]);
+        }
+        objs[i] = nullptr;
+    }
+}
+
+void set_checked(lv_obj_t *btn, bool checked) {
+    if (!btn) {
+        return;
+    }
+    if (checked) {
+        lv_obj_add_state(btn, LV_STATE_CHECKED);
+    } else {
+        lv_obj_clear_state(btn, LV_STATE_CHECKED);
+    }
+}
+
+uint32_t graph_color_token(lv_color_t color) {
+    return static_cast<uint32_t>(color.full);
+}
+} // namespace
+
+void UiController::release_all_sensor_graph_runtime_objects() {
+    release_lvgl_obj(temp_graph_label_min_);
+    release_lvgl_obj(temp_graph_label_now_);
+    release_lvgl_obj(temp_graph_label_max_);
+    release_lvgl_obj(rh_graph_label_min_);
+    release_lvgl_obj(rh_graph_label_now_);
+    release_lvgl_obj(rh_graph_label_max_);
+    release_lvgl_obj(voc_graph_label_min_);
+    release_lvgl_obj(voc_graph_label_now_);
+    release_lvgl_obj(voc_graph_label_max_);
+    release_lvgl_obj(nox_graph_label_min_);
+    release_lvgl_obj(nox_graph_label_now_);
+    release_lvgl_obj(nox_graph_label_max_);
+    release_lvgl_obj(hcho_graph_label_min_);
+    release_lvgl_obj(hcho_graph_label_now_);
+    release_lvgl_obj(hcho_graph_label_max_);
+    release_lvgl_obj(co2_graph_label_min_);
+    release_lvgl_obj(co2_graph_label_now_);
+    release_lvgl_obj(co2_graph_label_max_);
+    release_lvgl_obj(co_graph_label_min_);
+    release_lvgl_obj(co_graph_label_now_);
+    release_lvgl_obj(co_graph_label_max_);
+    release_lvgl_obj(pm05_graph_label_min_);
+    release_lvgl_obj(pm05_graph_label_now_);
+    release_lvgl_obj(pm05_graph_label_max_);
+    release_lvgl_obj(pm25_4_graph_label_min_);
+    release_lvgl_obj(pm25_4_graph_label_now_);
+    release_lvgl_obj(pm25_4_graph_label_max_);
+    release_lvgl_obj(pm1_10_graph_label_min_);
+    release_lvgl_obj(pm1_10_graph_label_now_);
+    release_lvgl_obj(pm1_10_graph_label_max_);
+    release_lvgl_obj(pressure_graph_label_min_);
+    release_lvgl_obj(pressure_graph_label_now_);
+    release_lvgl_obj(pressure_graph_label_max_);
+
+    release_lvgl_obj_array(temp_graph_zone_bands_, kMaxGraphZoneBands);
+    release_lvgl_obj_array(rh_graph_zone_bands_, kMaxGraphZoneBands);
+    release_lvgl_obj_array(voc_graph_zone_bands_, kMaxGraphZoneBands);
+    release_lvgl_obj_array(nox_graph_zone_bands_, kMaxGraphZoneBands);
+    release_lvgl_obj_array(hcho_graph_zone_bands_, kMaxGraphZoneBands);
+    release_lvgl_obj_array(co2_graph_zone_bands_, kMaxGraphZoneBands);
+    release_lvgl_obj_array(co_graph_zone_bands_, kMaxGraphZoneBands);
+    release_lvgl_obj_array(pm05_graph_zone_bands_, kMaxGraphZoneBands);
+    release_lvgl_obj_array(pm25_4_graph_zone_bands_, kMaxGraphZoneBands);
+    release_lvgl_obj_array(pm1_10_graph_zone_bands_, kMaxGraphZoneBands);
+
+    release_lvgl_obj(temp_graph_zone_overlay_);
+    release_lvgl_obj(rh_graph_zone_overlay_);
+    release_lvgl_obj(voc_graph_zone_overlay_);
+    release_lvgl_obj(nox_graph_zone_overlay_);
+    release_lvgl_obj(hcho_graph_zone_overlay_);
+    release_lvgl_obj(co2_graph_zone_overlay_);
+    release_lvgl_obj(co_graph_zone_overlay_);
+    release_lvgl_obj(pm05_graph_zone_overlay_);
+    release_lvgl_obj(pm25_4_graph_zone_overlay_);
+    release_lvgl_obj(pm1_10_graph_zone_overlay_);
+
+    release_lvgl_obj_array(temp_graph_time_labels_, kGraphTimeTickCount);
+    release_lvgl_obj_array(rh_graph_time_labels_, kGraphTimeTickCount);
+    release_lvgl_obj_array(voc_graph_time_labels_, kGraphTimeTickCount);
+    release_lvgl_obj_array(nox_graph_time_labels_, kGraphTimeTickCount);
+    release_lvgl_obj_array(hcho_graph_time_labels_, kGraphTimeTickCount);
+    release_lvgl_obj_array(co2_graph_time_labels_, kGraphTimeTickCount);
+    release_lvgl_obj_array(co_graph_time_labels_, kGraphTimeTickCount);
+    release_lvgl_obj_array(pm05_graph_time_labels_, kGraphTimeTickCount);
+    release_lvgl_obj_array(pm25_4_graph_time_labels_, kGraphTimeTickCount);
+    release_lvgl_obj_array(pm1_10_graph_time_labels_, kGraphTimeTickCount);
+    release_lvgl_obj_array(pressure_graph_time_labels_, kGraphTimeTickCount);
+
+    invalidate_active_graph_refresh_cache();
+}
+
+bool UiController::should_refresh_active_graph(InfoSensor sensor, TempGraphRange range, uint16_t points) {
+    constexpr uint32_t kGraphRefreshHeartbeatMs = 5000UL;
+    const uint16_t history_count = chartsHistory.count();
+    const uint32_t history_epoch = chartsHistory.latestEpoch();
+    const uint32_t theme_sig = active_graph_theme_signature();
+    const uint32_t now_ms = millis();
+
+    const bool key_changed =
+        (sensor != graph_refresh_sensor_) ||
+        (range != graph_refresh_range_) ||
+        (points != graph_refresh_points_) ||
+        (temp_units_c != graph_refresh_units_c_) ||
+        (night_mode != graph_refresh_night_mode_) ||
+        (theme_sig != graph_refresh_theme_sig_);
+    const bool history_changed =
+        (history_count != graph_refresh_history_count_) ||
+        (history_epoch != graph_refresh_epoch_);
+    const bool heartbeat_due =
+        (graph_refresh_last_ms_ == 0U) ||
+        ((now_ms - graph_refresh_last_ms_) >= kGraphRefreshHeartbeatMs);
+
+    return key_changed || history_changed || heartbeat_due;
+}
+
+void UiController::mark_active_graph_refreshed(InfoSensor sensor, TempGraphRange range, uint16_t points) {
+    graph_refresh_sensor_ = sensor;
+    graph_refresh_range_ = range;
+    graph_refresh_points_ = points;
+    graph_refresh_history_count_ = chartsHistory.count();
+    graph_refresh_epoch_ = chartsHistory.latestEpoch();
+    graph_refresh_units_c_ = temp_units_c;
+    graph_refresh_night_mode_ = night_mode;
+    graph_refresh_theme_sig_ = active_graph_theme_signature();
+    graph_refresh_last_ms_ = millis();
+}
+
+void UiController::invalidate_active_graph_refresh_cache() {
+    graph_refresh_sensor_ = INFO_NONE;
+    graph_refresh_range_ = TEMP_GRAPH_RANGE_3H;
+    graph_refresh_points_ = 0;
+    graph_refresh_history_count_ = 0;
+    graph_refresh_epoch_ = 0;
+    graph_refresh_units_c_ = temp_units_c;
+    graph_refresh_night_mode_ = night_mode;
+    graph_refresh_theme_sig_ = active_graph_theme_signature();
+    graph_refresh_last_ms_ = 0;
+}
+
+uint32_t UiController::active_graph_theme_signature() {
+    lv_color_t card_bg = lv_color_hex(0xff160c09);
+    lv_color_t card_border = color_card_border();
+    if (objects.card_co2_pro) {
+        card_bg = lv_obj_get_style_bg_color(objects.card_co2_pro, LV_PART_MAIN);
+        card_border = lv_obj_get_style_border_color(objects.card_co2_pro, LV_PART_MAIN);
+    }
+
+    uint32_t signature = graph_color_token(active_text_color());
+    signature = (signature * 16777619UL) ^ graph_color_token(card_border);
+    signature = (signature * 16777619UL) ^ graph_color_token(card_bg);
+    return signature;
+}
+
 uint16_t UiController::graph_points_for_range(TempGraphRange range) const {
     switch (range) {
         case TEMP_GRAPH_RANGE_1H:
@@ -559,7 +729,11 @@ void UiController::sync_threshold_dots_visibility() {
 }
 
 void UiController::set_temperature_info_mode(bool graph_mode) {
+    const bool mode_changed = (temp_graph_mode_ != graph_mode);
     temp_graph_mode_ = graph_mode;
+    if (mode_changed) {
+        invalidate_active_graph_refresh_cache();
+    }
     if (objects.btn_info_graph) {
         lv_obj_add_flag(objects.btn_info_graph, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
         lv_obj_set_ext_click_area(objects.btn_info_graph, 18);
@@ -586,17 +760,6 @@ void UiController::set_temperature_info_mode(bool graph_mode) {
     set_visible(objects.temperature_info_graph, graph_mode);
     sync_threshold_dots_visibility();
 
-    auto set_checked = [](lv_obj_t *btn, bool checked) {
-        if (!btn) {
-            return;
-        }
-        if (checked) {
-            lv_obj_add_state(btn, LV_STATE_CHECKED);
-        } else {
-            lv_obj_clear_state(btn, LV_STATE_CHECKED);
-        }
-    };
-
     sync_info_graph_button_state();
     set_checked(objects.btn_temp_range_1h, temp_graph_range_ == TEMP_GRAPH_RANGE_1H);
     set_checked(objects.btn_temp_range_3h, temp_graph_range_ == TEMP_GRAPH_RANGE_3H);
@@ -604,7 +767,11 @@ void UiController::set_temperature_info_mode(bool graph_mode) {
 }
 
 void UiController::set_rh_info_mode(bool graph_mode) {
+    const bool mode_changed = (rh_graph_mode_ != graph_mode);
     rh_graph_mode_ = graph_mode;
+    if (mode_changed) {
+        invalidate_active_graph_refresh_cache();
+    }
     if (objects.btn_rh_range_1h) {
         lv_obj_add_flag(objects.btn_rh_range_1h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
         lv_obj_set_ext_click_area(objects.btn_rh_range_1h, 12);
@@ -620,17 +787,6 @@ void UiController::set_rh_info_mode(bool graph_mode) {
     set_visible(objects.rh_info_thresholds, !graph_mode);
     set_visible(objects.rh_info_graph, graph_mode);
     sync_threshold_dots_visibility();
-
-    auto set_checked = [](lv_obj_t *btn, bool checked) {
-        if (!btn) {
-            return;
-        }
-        if (checked) {
-            lv_obj_add_state(btn, LV_STATE_CHECKED);
-        } else {
-            lv_obj_clear_state(btn, LV_STATE_CHECKED);
-        }
-    };
     set_checked(objects.btn_rh_range_1h, rh_graph_range_ == TEMP_GRAPH_RANGE_1H);
     set_checked(objects.btn_rh_range_3h, rh_graph_range_ == TEMP_GRAPH_RANGE_3H);
     set_checked(objects.btn_rh_range_24h, rh_graph_range_ == TEMP_GRAPH_RANGE_24H);
@@ -639,7 +795,11 @@ void UiController::set_rh_info_mode(bool graph_mode) {
 }
 
 void UiController::set_voc_info_mode(bool graph_mode) {
+    const bool mode_changed = (voc_graph_mode_ != graph_mode);
     voc_graph_mode_ = graph_mode;
+    if (mode_changed) {
+        invalidate_active_graph_refresh_cache();
+    }
     if (objects.btn_voc_range_1h) {
         lv_obj_add_flag(objects.btn_voc_range_1h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
         lv_obj_set_ext_click_area(objects.btn_voc_range_1h, 12);
@@ -661,17 +821,6 @@ void UiController::set_voc_info_mode(bool graph_mode) {
     set_visible(objects.voc_info_thresholds, !graph_mode);
     set_visible(objects.voc_info_graph, graph_mode);
     sync_threshold_dots_visibility();
-
-    auto set_checked = [](lv_obj_t *btn, bool checked) {
-        if (!btn) {
-            return;
-        }
-        if (checked) {
-            lv_obj_add_state(btn, LV_STATE_CHECKED);
-        } else {
-            lv_obj_clear_state(btn, LV_STATE_CHECKED);
-        }
-    };
     set_checked(objects.btn_voc_range_1h, voc_graph_range_ == TEMP_GRAPH_RANGE_1H);
     set_checked(objects.btn_voc_range_3h, voc_graph_range_ == TEMP_GRAPH_RANGE_3H);
     set_checked(objects.btn_voc_range_24h, voc_graph_range_ == TEMP_GRAPH_RANGE_24H);
@@ -680,7 +829,11 @@ void UiController::set_voc_info_mode(bool graph_mode) {
 }
 
 void UiController::set_nox_info_mode(bool graph_mode) {
+    const bool mode_changed = (nox_graph_mode_ != graph_mode);
     nox_graph_mode_ = graph_mode;
+    if (mode_changed) {
+        invalidate_active_graph_refresh_cache();
+    }
     if (objects.btn_nox_range_1h) {
         lv_obj_add_flag(objects.btn_nox_range_1h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
         lv_obj_set_ext_click_area(objects.btn_nox_range_1h, 12);
@@ -702,17 +855,6 @@ void UiController::set_nox_info_mode(bool graph_mode) {
     set_visible(objects.nox_info_thresholds, !graph_mode);
     set_visible(objects.nox_info_graph, graph_mode);
     sync_threshold_dots_visibility();
-
-    auto set_checked = [](lv_obj_t *btn, bool checked) {
-        if (!btn) {
-            return;
-        }
-        if (checked) {
-            lv_obj_add_state(btn, LV_STATE_CHECKED);
-        } else {
-            lv_obj_clear_state(btn, LV_STATE_CHECKED);
-        }
-    };
     set_checked(objects.btn_nox_range_1h, nox_graph_range_ == TEMP_GRAPH_RANGE_1H);
     set_checked(objects.btn_nox_range_3h, nox_graph_range_ == TEMP_GRAPH_RANGE_3H);
     set_checked(objects.btn_nox_range_24h, nox_graph_range_ == TEMP_GRAPH_RANGE_24H);
@@ -721,7 +863,11 @@ void UiController::set_nox_info_mode(bool graph_mode) {
 }
 
 void UiController::set_hcho_info_mode(bool graph_mode) {
+    const bool mode_changed = (hcho_graph_mode_ != graph_mode);
     hcho_graph_mode_ = graph_mode;
+    if (mode_changed) {
+        invalidate_active_graph_refresh_cache();
+    }
     if (objects.btn_hcho_range_1h) {
         lv_obj_add_flag(objects.btn_hcho_range_1h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
         lv_obj_set_ext_click_area(objects.btn_hcho_range_1h, 12);
@@ -743,17 +889,6 @@ void UiController::set_hcho_info_mode(bool graph_mode) {
     set_visible(objects.hcho_info_thresholds, !graph_mode);
     set_visible(objects.hcho_info_graph, graph_mode);
     sync_threshold_dots_visibility();
-
-    auto set_checked = [](lv_obj_t *btn, bool checked) {
-        if (!btn) {
-            return;
-        }
-        if (checked) {
-            lv_obj_add_state(btn, LV_STATE_CHECKED);
-        } else {
-            lv_obj_clear_state(btn, LV_STATE_CHECKED);
-        }
-    };
     set_checked(objects.btn_hcho_range_1h, hcho_graph_range_ == TEMP_GRAPH_RANGE_1H);
     set_checked(objects.btn_hcho_range_3h, hcho_graph_range_ == TEMP_GRAPH_RANGE_3H);
     set_checked(objects.btn_hcho_range_24h, hcho_graph_range_ == TEMP_GRAPH_RANGE_24H);
@@ -762,7 +897,11 @@ void UiController::set_hcho_info_mode(bool graph_mode) {
 }
 
 void UiController::set_co2_info_mode(bool graph_mode) {
+    const bool mode_changed = (co2_graph_mode_ != graph_mode);
     co2_graph_mode_ = graph_mode;
+    if (mode_changed) {
+        invalidate_active_graph_refresh_cache();
+    }
     if (objects.btn_co2_range_1h) {
         lv_obj_add_flag(objects.btn_co2_range_1h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
         lv_obj_set_ext_click_area(objects.btn_co2_range_1h, 12);
@@ -784,17 +923,6 @@ void UiController::set_co2_info_mode(bool graph_mode) {
     set_visible(objects.co2_info_thresholds, !graph_mode);
     set_visible(objects.co2_info_graph, graph_mode);
     sync_threshold_dots_visibility();
-
-    auto set_checked = [](lv_obj_t *btn, bool checked) {
-        if (!btn) {
-            return;
-        }
-        if (checked) {
-            lv_obj_add_state(btn, LV_STATE_CHECKED);
-        } else {
-            lv_obj_clear_state(btn, LV_STATE_CHECKED);
-        }
-    };
     set_checked(objects.btn_co2_range_1h, co2_graph_range_ == TEMP_GRAPH_RANGE_1H);
     set_checked(objects.btn_co2_range_3h, co2_graph_range_ == TEMP_GRAPH_RANGE_3H);
     set_checked(objects.btn_co2_range_24h, co2_graph_range_ == TEMP_GRAPH_RANGE_24H);
@@ -803,7 +931,11 @@ void UiController::set_co2_info_mode(bool graph_mode) {
 }
 
 void UiController::set_pm05_info_mode(bool graph_mode) {
+    const bool mode_changed = (pm05_graph_mode_ != graph_mode);
     pm05_graph_mode_ = graph_mode;
+    if (mode_changed) {
+        invalidate_active_graph_refresh_cache();
+    }
     if (objects.btn_pm05_range_1h) {
         lv_obj_add_flag(objects.btn_pm05_range_1h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
         lv_obj_set_ext_click_area(objects.btn_pm05_range_1h, 12);
@@ -824,19 +956,8 @@ void UiController::set_pm05_info_mode(bool graph_mode) {
     }
 
     set_visible(objects.pm05_info_thresholds, !graph_mode);
-    set_visible(objects.pm05_info_graph, graph_mode && (info_sensor == INFO_PM05));
+    set_visible(objects.pm05_info_graph, graph_mode);
     sync_threshold_dots_visibility();
-
-    auto set_checked = [](lv_obj_t *btn, bool checked) {
-        if (!btn) {
-            return;
-        }
-        if (checked) {
-            lv_obj_add_state(btn, LV_STATE_CHECKED);
-        } else {
-            lv_obj_clear_state(btn, LV_STATE_CHECKED);
-        }
-    };
     set_checked(objects.btn_pm05_range_1h, pm05_graph_range_ == TEMP_GRAPH_RANGE_1H);
     set_checked(objects.btn_pm05_range_3h, pm05_graph_range_ == TEMP_GRAPH_RANGE_3H);
     set_checked(objects.btn_pm05_range_24h, pm05_graph_range_ == TEMP_GRAPH_RANGE_24H);
@@ -845,7 +966,11 @@ void UiController::set_pm05_info_mode(bool graph_mode) {
 }
 
 void UiController::set_pm25_4_info_mode(bool graph_mode) {
+    const bool mode_changed = (pm25_4_graph_mode_ != graph_mode);
     pm25_4_graph_mode_ = graph_mode;
+    if (mode_changed) {
+        invalidate_active_graph_refresh_cache();
+    }
     if (objects.btn_pm25_4_range_1h) {
         lv_obj_add_flag(objects.btn_pm25_4_range_1h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
         lv_obj_set_ext_click_area(objects.btn_pm25_4_range_1h, 12);
@@ -883,17 +1008,6 @@ void UiController::set_pm25_4_info_mode(bool graph_mode) {
     set_visible(objects.pm25_info_thresholds, !graph_mode && pm25_selected);
     set_visible(objects.pm4_info_thresholds, !graph_mode && pm4_selected);
     sync_threshold_dots_visibility();
-
-    auto set_checked = [](lv_obj_t *btn, bool checked) {
-        if (!btn) {
-            return;
-        }
-        if (checked) {
-            lv_obj_add_state(btn, LV_STATE_CHECKED);
-        } else {
-            lv_obj_clear_state(btn, LV_STATE_CHECKED);
-        }
-    };
     set_checked(objects.btn_pm25_4_range_1h, pm25_4_graph_range_ == TEMP_GRAPH_RANGE_1H);
     set_checked(objects.btn_pm25_4_range_3h, pm25_4_graph_range_ == TEMP_GRAPH_RANGE_3H);
     set_checked(objects.btn_pm25_4_range_24h, pm25_4_graph_range_ == TEMP_GRAPH_RANGE_24H);
@@ -904,7 +1018,11 @@ void UiController::set_pm25_4_info_mode(bool graph_mode) {
 }
 
 void UiController::set_pm1_10_info_mode(bool graph_mode) {
+    const bool mode_changed = (pm1_10_graph_mode_ != graph_mode);
     pm1_10_graph_mode_ = graph_mode;
+    if (mode_changed) {
+        invalidate_active_graph_refresh_cache();
+    }
     if (objects.btn_pm1_10_range_1h) {
         lv_obj_add_flag(objects.btn_pm1_10_range_1h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
         lv_obj_set_ext_click_area(objects.btn_pm1_10_range_1h, 12);
@@ -946,17 +1064,6 @@ void UiController::set_pm1_10_info_mode(bool graph_mode) {
     set_visible(objects.pm1_info_thresholds, !graph_mode && pm1_selected);
     set_visible(objects.pm10_info_thresholds, !graph_mode && pm10_selected);
     sync_threshold_dots_visibility();
-
-    auto set_checked = [](lv_obj_t *btn, bool checked) {
-        if (!btn) {
-            return;
-        }
-        if (checked) {
-            lv_obj_add_state(btn, LV_STATE_CHECKED);
-        } else {
-            lv_obj_clear_state(btn, LV_STATE_CHECKED);
-        }
-    };
     set_checked(objects.btn_pm1_10_range_1h, pm1_10_graph_range_ == TEMP_GRAPH_RANGE_1H);
     set_checked(objects.btn_pm1_10_range_3h, pm1_10_graph_range_ == TEMP_GRAPH_RANGE_3H);
     set_checked(objects.btn_pm1_10_range_24h, pm1_10_graph_range_ == TEMP_GRAPH_RANGE_24H);
@@ -965,7 +1072,11 @@ void UiController::set_pm1_10_info_mode(bool graph_mode) {
 }
 
 void UiController::set_co_info_mode(bool graph_mode) {
+    const bool mode_changed = (co_graph_mode_ != graph_mode);
     co_graph_mode_ = graph_mode;
+    if (mode_changed) {
+        invalidate_active_graph_refresh_cache();
+    }
     if (objects.btn_co_range_1h) {
         lv_obj_add_flag(objects.btn_co_range_1h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
         lv_obj_set_ext_click_area(objects.btn_co_range_1h, 12);
@@ -987,17 +1098,6 @@ void UiController::set_co_info_mode(bool graph_mode) {
     set_visible(objects.co_info_thresholds, !graph_mode);
     set_visible(objects.co_info_graph, graph_mode);
     sync_threshold_dots_visibility();
-
-    auto set_checked = [](lv_obj_t *btn, bool checked) {
-        if (!btn) {
-            return;
-        }
-        if (checked) {
-            lv_obj_add_state(btn, LV_STATE_CHECKED);
-        } else {
-            lv_obj_clear_state(btn, LV_STATE_CHECKED);
-        }
-    };
     set_checked(objects.btn_co_range_1h, co_graph_range_ == TEMP_GRAPH_RANGE_1H);
     set_checked(objects.btn_co_range_3h, co_graph_range_ == TEMP_GRAPH_RANGE_3H);
     set_checked(objects.btn_co_range_24h, co_graph_range_ == TEMP_GRAPH_RANGE_24H);
@@ -1006,7 +1106,11 @@ void UiController::set_co_info_mode(bool graph_mode) {
 }
 
 void UiController::set_pressure_info_mode(bool graph_mode) {
+    const bool mode_changed = (pressure_graph_mode_ != graph_mode);
     pressure_graph_mode_ = graph_mode;
+    if (mode_changed) {
+        invalidate_active_graph_refresh_cache();
+    }
 
     if (objects.btn_pressure_range_1h) {
         lv_obj_add_flag(objects.btn_pressure_range_1h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
@@ -1036,17 +1140,6 @@ void UiController::set_pressure_info_mode(bool graph_mode) {
     set_visible(objects.btn_3h_pressure_info, !graph_mode);
     set_visible(objects.btn_24h_pressure_info, !graph_mode);
     sync_threshold_dots_visibility();
-
-    auto set_checked = [](lv_obj_t *btn, bool checked) {
-        if (!btn) {
-            return;
-        }
-        if (checked) {
-            lv_obj_add_state(btn, LV_STATE_CHECKED);
-        } else {
-            lv_obj_clear_state(btn, LV_STATE_CHECKED);
-        }
-    };
     set_checked(objects.btn_pressure_range_1h, pressure_graph_range_ == TEMP_GRAPH_RANGE_1H);
     set_checked(objects.btn_pressure_range_3h, pressure_graph_range_ == TEMP_GRAPH_RANGE_3H);
     set_checked(objects.btn_pressure_range_24h, pressure_graph_range_ == TEMP_GRAPH_RANGE_24H);
