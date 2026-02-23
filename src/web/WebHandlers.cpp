@@ -484,6 +484,17 @@ void wifi_handle_root() {
         return;
     }
     WebServer &server = *context->server;
+
+    if (server.hasArg("scan_status")) {
+        ArduinoJson::JsonDocument doc;
+        doc["success"] = true;
+        doc["scan_in_progress"] = context->wifi_scan_in_progress && *context->wifi_scan_in_progress;
+        String json;
+        serializeJson(doc, json);
+        server.send(200, "application/json", json);
+        return;
+    }
+
     if (server.hasArg("scan") && context->wifi_start_scan) {
         context->wifi_start_scan();
     }
@@ -515,6 +526,12 @@ void dashboard_handle_root() {
     // Keep captive-portal setup flow intact on AP root.
     if (ap_mode && uri == "/") {
         wifi_handle_root();
+        return;
+    }
+
+    // In AP mode (usually no internet), serve a CDN-free dashboard variant.
+    if (ap_mode) {
+        context->server->send_P(200, "text/html", WebTemplates::kDashboardPageTemplateAp);
         return;
     }
 
