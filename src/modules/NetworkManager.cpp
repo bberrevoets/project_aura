@@ -556,6 +556,16 @@ void AuraNetworkManager::startAp() {
     const char *ap_ssid = ap_ssid_.isEmpty() ? Config::WIFI_AP_SSID : ap_ssid_.c_str();
     if (!WiFi.softAP(ap_ssid)) {
         LOGW("WiFi", "failed to start AP: %s", ap_ssid);
+        if (WiFi.status() == WL_CONNECTED) {
+            wifi_state_ = WIFI_STATE_STA_CONNECTED;
+            server_.begin();
+        } else {
+            wifi_state_ = WIFI_STATE_OFF;
+            wifi_retry_count_ = 0;
+            wifi_retry_at_ms_ = 0;
+        }
+        wifi_ui_dirty_ = true;
+        return;
     }
     IPAddress ip = WiFi.softAPIP();
     startScan();

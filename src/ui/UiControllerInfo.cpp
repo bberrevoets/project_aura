@@ -29,6 +29,17 @@ bool format_pm05_count(float value, char *buf, size_t buf_size) {
     }
     return true;
 }
+
+void set_checked_state(lv_obj_t *btn, bool checked) {
+    if (!btn) {
+        return;
+    }
+    if (checked) {
+        lv_obj_add_state(btn, LV_STATE_CHECKED);
+    } else {
+        lv_obj_clear_state(btn, LV_STATE_CHECKED);
+    }
+}
 } // namespace
 
 void UiController::update_sensor_info_ui() {
@@ -575,15 +586,10 @@ void UiController::select_humidity_info(InfoSensor sensor) {
     set_visible(objects.dp_info, sensor == INFO_DP);
     set_rh_info_mode((sensor == INFO_RH) && rh_graph_mode_);
 
-    auto set_checked = [](lv_obj_t *btn, bool checked) {
-        if (!btn) return;
-        if (checked) lv_obj_add_state(btn, LV_STATE_CHECKED);
-        else lv_obj_clear_state(btn, LV_STATE_CHECKED);
-    };
-    set_checked(objects.btn_rh_info, sensor == INFO_RH);
-    set_checked(objects.btn_ah_info, sensor == INFO_AH);
-    set_checked(objects.btn_mr_info, sensor == INFO_MR);
-    set_checked(objects.btn_dp_info, sensor == INFO_DP);
+    set_checked_state(objects.btn_rh_info, sensor == INFO_RH);
+    set_checked_state(objects.btn_ah_info, sensor == INFO_AH);
+    set_checked_state(objects.btn_mr_info, sensor == INFO_MR);
+    set_checked_state(objects.btn_dp_info, sensor == INFO_DP);
 
     if (objects.label_sensor_info_title) {
         if (sensor == INFO_RH) {
@@ -635,25 +641,15 @@ void UiController::select_pm_info(InfoSensor sensor) {
         set_pm05_info_mode(pm05_graph_mode_);
     }
     if (pm25_pm4_group) {
-        auto set_checked = [](lv_obj_t *btn, bool checked) {
-            if (!btn) return;
-            if (checked) lv_obj_add_state(btn, LV_STATE_CHECKED);
-            else lv_obj_clear_state(btn, LV_STATE_CHECKED);
-        };
-        set_checked(objects.btn_pm25_info, sensor == INFO_PM25);
-        set_checked(objects.btn_pm4_info, sensor == INFO_PM4);
+        set_checked_state(objects.btn_pm25_info, sensor == INFO_PM25);
+        set_checked_state(objects.btn_pm4_info, sensor == INFO_PM4);
         if (objects.btn_pm25_info) lv_obj_move_foreground(objects.btn_pm25_info);
         if (objects.btn_pm4_info) lv_obj_move_foreground(objects.btn_pm4_info);
         set_pm25_4_info_mode(pm25_4_graph_mode_);
     }
     if (pm1_pm10_group) {
-        auto set_checked = [](lv_obj_t *btn, bool checked) {
-            if (!btn) return;
-            if (checked) lv_obj_add_state(btn, LV_STATE_CHECKED);
-            else lv_obj_clear_state(btn, LV_STATE_CHECKED);
-        };
-        set_checked(objects.btn_pm10_info, sensor == INFO_PM10);
-        set_checked(objects.btn_pm1_info, sensor == INFO_PM1);
+        set_checked_state(objects.btn_pm10_info, sensor == INFO_PM10);
+        set_checked_state(objects.btn_pm1_info, sensor == INFO_PM1);
         // Keep PM tab buttons above PM1/PM10 content layers so they remain clickable.
         if (objects.btn_pm10_info) lv_obj_move_foreground(objects.btn_pm10_info);
         if (objects.btn_pm1_info) lv_obj_move_foreground(objects.btn_pm1_info);
@@ -683,13 +679,8 @@ void UiController::select_pressure_info(InfoSensor sensor) {
     set_visible(objects.pressure_3h_info, sensor == INFO_PRESSURE_3H);
     set_visible(objects.pressure_24h_info, sensor == INFO_PRESSURE_24H);
 
-    auto set_checked = [](lv_obj_t *btn, bool checked) {
-        if (!btn) return;
-        if (checked) lv_obj_add_state(btn, LV_STATE_CHECKED);
-        else lv_obj_clear_state(btn, LV_STATE_CHECKED);
-    };
-    set_checked(objects.btn_3h_pressure_info, sensor == INFO_PRESSURE_3H);
-    set_checked(objects.btn_24h_pressure_info, sensor == INFO_PRESSURE_24H);
+    set_checked_state(objects.btn_3h_pressure_info, sensor == INFO_PRESSURE_3H);
+    set_checked_state(objects.btn_24h_pressure_info, sensor == INFO_PRESSURE_24H);
     set_pressure_info_mode(pressure_graph_mode_);
 
     const char *title = nullptr;

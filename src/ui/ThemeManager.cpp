@@ -6,6 +6,7 @@
 
 #include "ThemeManager.h"
 #include "modules/StorageManager.h"
+#include "core/Logger.h"
 #include "ui/ui.h"
 #include "ui/styles.h"
 
@@ -247,7 +248,10 @@ void ThemeManager::saveToPrefs(StorageManager &storage, const ThemeColors &color
     cfg.theme.screen_gradient_enabled = colors.screen_gradient_enabled;
     cfg.theme.screen_gradient_color = themeColorToU32(colors.screen_gradient_color);
     cfg.theme.screen_gradient_direction = static_cast<uint32_t>(colors.screen_gradient_direction);
-    storage.saveConfig(true);
+    if (!storage.saveConfig(true)) {
+        storage.requestSave();
+        LOGE("Theme", "failed to persist theme settings");
+    }
 }
 
 bool ThemeManager::readFromSwatch(const ThemeSwatch &swatch, ThemeColors &out) const {

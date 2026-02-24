@@ -1006,7 +1006,10 @@ void UiController::set_night_mode_state(bool enabled, bool save_pref) {
         night_mode = enabled;
         if (save_pref) {
             storage.config().night_mode = enabled;
-            storage.saveConfig(true);
+            if (!storage.saveConfig(true)) {
+                storage.requestSave();
+                LOGE("UI", "failed to persist night mode preference");
+            }
         }
         return;
     }
@@ -1030,7 +1033,10 @@ void UiController::set_night_mode_state(bool enabled, bool save_pref) {
     }
     if (save_pref) {
         storage.config().night_mode = enabled;
-        storage.saveConfig(true);
+        if (!storage.saveConfig(true)) {
+            storage.requestSave();
+            LOGE("UI", "failed to persist night mode preference");
+        }
     }
 }
 

@@ -10,6 +10,7 @@
 #include <time.h>
 #include <esp_display_panel.hpp>
 #include "modules/StorageManager.h"
+#include "core/Logger.h"
 #include "lvgl_v8_port.h"
 #include "ui/ui.h"
 
@@ -138,8 +139,12 @@ void BacklightManager::savePrefs(StorageManager &storage) {
     cfg.backlight_sleep_minute = sleep_minute_;
     cfg.backlight_wake_hour = wake_hour_;
     cfg.backlight_wake_minute = wake_minute_;
-    storage.saveConfig(true);
-    prefs_dirty_ = false;
+    if (storage.saveConfig(true)) {
+        prefs_dirty_ = false;
+    } else {
+        storage.requestSave();
+        LOGE("Backlight", "failed to persist backlight settings");
+    }
 }
 
 void BacklightManager::setScheduleEnabled(bool enabled) {

@@ -1495,31 +1495,104 @@ void settings_handle_update() {
         restart_requested = restart_var.as<bool>();
     }
 
-    // Apply only after full validation.
-    if (has_backlight && !ui.webSetBacklight(requested_backlight)) {
-        server.send(409, "text/plain", "backlight state could not be applied");
-        return;
+    const bool previous_backlight = ui.webBacklightOn();
+    const bool previous_night_mode = ui.webNightModeEnabled();
+    const bool previous_units_c = ui.webUnitsC();
+    const float previous_temp_offset = ui.webTempOffset();
+    const float previous_hum_offset = ui.webHumOffset();
+    const String previous_display_name =
+        (has_display_name && context->storage) ? context->storage->config().web_display_name : String();
+
+    bool applied_backlight = false;
+    bool applied_night_mode = false;
+    bool applied_units = false;
+    bool applied_offsets = false;
+    bool applied_display_name = false;
+
+    auto rollback = [&]() -> bool {
+        bool rollback_failed = false;
+
+        if (applied_backlight && ui.webBacklightOn() != previous_backlight) {
+            if (!ui.webSetBacklight(previous_backlight)) {
+                rollback_failed = true;
+            }
+        }
+        if (applied_night_mode && ui.webNightModeEnabled() != previous_night_mode) {
+            if (!ui.webSetNightMode(previous_night_mode)) {
+                rollback_failed = true;
+            }
+        }
+        if (applied_units && ui.webUnitsC() != previous_units_c) {
+            if (!ui.webSetUnitsC(previous_units_c)) {
+                rollback_failed = true;
+            }
+        }
+        if (applied_offsets) {
+            const bool temp_changed = fabsf(ui.webTempOffset() - previous_temp_offset) > 0.0001f;
+            const bool hum_changed = fabsf(ui.webHumOffset() - previous_hum_offset) > 0.0001f;
+            if ((temp_changed || hum_changed) &&
+                !ui.webSetOffsets(previous_temp_offset, previous_hum_offset)) {
+                rollback_failed = true;
+            }
+        }
+        if (applied_display_name && context->storage) {
+            context->storage->config().web_display_name = previous_display_name;
+            if (!context->storage->saveConfig(true)) {
+                context->storage->requestSave();
+                rollback_failed = true;
+            }
+        }
+
+        return !rollback_failed;
+    };
+
+    auto respond_apply_failure = [&](int status_code, const char *message) {
+        if (!rollback()) {
+            LOGE("Web", "/api/settings rollback failed");
+            server.send(500, "text/plain", "Failed to apply settings atomically");
+            return;
+        }
+        server.send(status_code, "text/plain", message);
+    };
+
+    // Apply only after full validation; on any failure, rollback previous changes.
+    if (has_units_c) {
+        if (!ui.webSetUnitsC(requested_units_c)) {
+            respond_apply_failure(500, "Failed to persist units setting");
+            return;
+        }
+        applied_units = true;
     }
-    if (has_night_mode && !ui.webSetNightMode(requested_night_mode)) {
-        server.send(409, "text/plain", "night_mode is locked by auto mode");
-        return;
+    if (has_offsets) {
+        if (!ui.webSetOffsets(requested_temp_offset, requested_hum_offset)) {
+            respond_apply_failure(500, "Failed to persist offsets");
+            return;
+        }
+        applied_offsets = true;
     }
-    if (has_units_c && !ui.webSetUnitsC(requested_units_c)) {
-        server.send(500, "text/plain", "Failed to persist units setting");
-        return;
-    }
-    if (has_offsets && !ui.webSetOffsets(requested_temp_offset, requested_hum_offset)) {
-        server.send(500, "text/plain", "Failed to persist offsets");
-        return;
-    }
-    if (has_display_name) {
-        const String previous_display_name = context->storage->config().web_display_name;
+    if (has_display_name && context->storage) {
         context->storage->config().web_display_name = requested_display_name;
         if (!context->storage->saveConfig(true)) {
             context->storage->config().web_display_name = previous_display_name;
-            server.send(500, "text/plain", "Failed to persist display_name");
+            context->storage->requestSave();
+            respond_apply_failure(500, "Failed to persist display_name");
             return;
         }
+        applied_display_name = true;
+    }
+    if (has_night_mode) {
+        if (!ui.webSetNightMode(requested_night_mode)) {
+            respond_apply_failure(409, "night_mode is locked by auto mode");
+            return;
+        }
+        applied_night_mode = true;
+    }
+    if (has_backlight) {
+        if (!ui.webSetBacklight(requested_backlight)) {
+            respond_apply_failure(409, "backlight state could not be applied");
+            return;
+        }
+        applied_backlight = true;
     }
 
     ArduinoJson::JsonDocument response_doc;
@@ -1533,7 +1606,10 @@ void settings_handle_update() {
     server.send(200, "application/json", json);
 
     if (restart_requested) {
-        ui.webRequestRestart();
+        g_deferred_restart = true;
+        g_deferred_restart_due_ms = millis() + kDeferredActionDelayMs;
+        LOGI("Web", "settings restart requested, deferred reboot in %u ms",
+             static_cast<unsigned>(kDeferredActionDelayMs));
     }
 }
 
