@@ -148,6 +148,18 @@ void loop()
         return;
     }
 
+    const bool ota_busy = WebHandlersIsOtaBusy();
+    if (ota_busy) {
+        networkManager.poll();
+        uint32_t now = millis();
+        storage.poll(now);
+        memoryMonitor.poll(now);
+        uiController.poll(now);
+        Watchdog::kick();
+        delay(1);
+        return;
+    }
+
     SensorManager::PollResult sensor_poll =
         sensorManager.poll(currentData, storage, pressureHistory, co2_asc_enabled);
     uiController.onSensorPoll(sensor_poll);
@@ -164,13 +176,9 @@ void loop()
     uiController.onTimePoll(time_poll);
     fanControl.poll(now, &currentData, sensorManager.isWarmupActive());
     mqttManager.poll(currentData, night_mode, alert_blink_enabled, backlightManager.isOn());
-    const bool ota_busy = WebHandlersIsOtaBusy();
-    if (ota_busy) {
-        networkManager.poll();
-    }
     storage.poll(now);
     memoryMonitor.poll(now);
     uiController.poll(now);
     Watchdog::kick();
-    delay(ota_busy ? 1 : 10);
+    delay(10);
 }
