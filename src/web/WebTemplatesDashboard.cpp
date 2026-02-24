@@ -1339,6 +1339,8 @@ function AuraDashboard() {
   const [savedSettings, setSavedSettings] = useState(DEFAULT_WEB_SETTINGS);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsSaveStatus, setSettingsSaveStatus] = useState('idle'); // idle | saved | error
+  const [toggleErrorMessage, setToggleErrorMessage] = useState('');
+  const toggleErrorTimerRef = React.useRef(null);
   const otaFileInputRef = React.useRef(null);
   const [otaFile, setOtaFile] = useState(null);
   const [otaUploadState, setOtaUploadState] = useState('idle'); // idle | uploading | success | error
@@ -1347,6 +1349,10 @@ function AuraDashboard() {
   const otaUploadInProgress = otaUploadState === 'uploading';
   const otaRestartPending = otaUploadState === 'success';
   const otaBusy = otaUploadInProgress || otaRestartPending;
+  const toggleRequestRef = React.useRef({
+    night_mode: { inFlight: false, queued: null },
+    backlight_on: { inFlight: false, queued: null },
+  });
 
   // Device Name Editing
   const [deviceName, setDeviceName] = useState(PREVIEW_HOSTNAME);
@@ -1384,10 +1390,22 @@ function AuraDashboard() {
     settings.tempOffset !== savedSettings.tempOffset ||
     settings.humOffset !== savedSettings.humOffset;
 
-  const applyParsedSettings = (parsed, force = false) => {
+  const shouldApplyToggleFromApi = (toggleKey, overrideKey = null) => {
+    if (overrideKey === toggleKey) return true;
+    const queue = toggleRequestRef.current[toggleKey];
+    return !(queue && (queue.inFlight || queue.queued !== null));
+  };
+
+  const applyParsedSettings = (parsed, force = false, toggleOverrideKey = null) => {
     if (!parsed) return;
     if (!force && (hasSettingsChanges || settingsSaving)) return;
-    const patch = settingsPatchFromParsed(parsed);
+    const patch = { ...settingsPatchFromParsed(parsed) };
+    if (!shouldApplyToggleFromApi('night_mode', toggleOverrideKey)) {
+      delete patch.nightMode;
+    }
+    if (!shouldApplyToggleFromApi('backlight_on', toggleOverrideKey)) {
+      delete patch.backlight;
+    }
     if (Object.keys(patch).length === 0) return;
     setSavedSettings((prev) => ({ ...prev, ...patch }));
     setSettings((prev) => ({ ...prev, ...patch }));
@@ -1406,29 +1424,79 @@ function AuraDashboard() {
         return response.json();
       });
 
+  const showToggleError = (message) => {
+    setToggleErrorMessage(message || '');
+    if (toggleErrorTimerRef.current) {
+      clearTimeout(toggleErrorTimerRef.current);
+      toggleErrorTimerRef.current = null;
+    }
+    if (message) {
+      toggleErrorTimerRef.current = setTimeout(() => {
+        setToggleErrorMessage('');
+        toggleErrorTimerRef.current = null;
+      }, 3500);
+    }
+  };
+
+  const processToggleQueue = (key) => {
+    const queue = toggleRequestRef.current[key];
+    if (!queue || queue.inFlight || queue.queued === null) return;
+
+    const target = queue.queued;
+    queue.queued = null;
+    queue.inFlight = true;
+
+    postSettingsPatch({ [key]: target })
+      .then((payload) => {
+        // Ignore superseded responses when a newer toggle value is already queued.
+        if (queue.queued === null) {
+          const parsed = parseSettingsPayload(payload?.settings || {});
+          applyParsedSettings(parsed, true, key);
+        }
+        showToggleError('');
+      })
+      .catch(() => {
+        // Re-sync from current backend state on transport/server errors.
+        fetch('/api/state', { cache: 'no-store' })
+          .then((response) => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.json();
+          })
+          .then((payload) => {
+            const parsed = parseSettingsPayload(payload?.settings || {});
+            applyParsedSettings(parsed, true, key);
+          })
+          .catch(() => {});
+        showToggleError('Toggle update failed. Restored device state.');
+      })
+      .finally(() => {
+        queue.inFlight = false;
+        if (queue.queued !== null) {
+          processToggleQueue(key);
+        }
+      });
+  };
+
+  const enqueueTogglePatch = (key, value) => {
+    const queue = toggleRequestRef.current[key];
+    if (!queue) return;
+    queue.queued = value;
+    processToggleQueue(key);
+  };
+
   const toggleNightMode = () => {
     if (settings.nightModeLocked) return;
     const next = !settings.nightMode;
     setSettings((prev) => ({ ...prev, nightMode: next }));
     setSavedSettings((prev) => ({ ...prev, nightMode: next }));
-    postSettingsPatch({ night_mode: next })
-      .then((payload) => {
-        const parsed = parseSettingsPayload(payload?.settings || {});
-        applyParsedSettings(parsed, true);
-      })
-      .catch(() => {});
+    enqueueTogglePatch('night_mode', next);
   };
 
   const toggleBacklight = () => {
     const next = !settings.backlight;
     setSettings((prev) => ({ ...prev, backlight: next }));
     setSavedSettings((prev) => ({ ...prev, backlight: next }));
-    postSettingsPatch({ backlight_on: next })
-      .then((payload) => {
-        const parsed = parseSettingsPayload(payload?.settings || {});
-        applyParsedSettings(parsed, true);
-      })
-      .catch(() => {});
+    enqueueTogglePatch('backlight_on', next);
   };
 
   const setTemperatureUnit = (nextUnit) => {
@@ -1514,6 +1582,7 @@ function AuraDashboard() {
     setOtaUploadMessage('Uploading firmware...');
 
     xhr.open('POST', '/api/ota', true);
+    xhr.timeout = 180000;
     xhr.upload.onprogress = (event) => {
       if (!event.lengthComputable || event.total <= 0) return;
       const progress = Math.min(100, Math.round((event.loaded / event.total) * 100));
@@ -1552,6 +1621,10 @@ function AuraDashboard() {
       setOtaUploadState('error');
       setOtaUploadMessage('Upload failed. Check network connection and retry.');
     };
+    xhr.ontimeout = () => {
+      setOtaUploadState('error');
+      setOtaUploadMessage('Upload timed out. Retry closer to device/AP.');
+    };
 
     xhr.send(formData);
   };
@@ -1561,6 +1634,14 @@ function AuraDashboard() {
     const timeoutId = setTimeout(() => setSettingsSaveStatus('idle'), 2500);
     return () => clearTimeout(timeoutId);
   }, [settingsSaveStatus]);
+
+  useEffect(() => {
+    return () => {
+      if (toggleErrorTimerRef.current) {
+        clearTimeout(toggleErrorTimerRef.current);
+      }
+    };
+  }, []);
 
   const [stateApi, setStateApi] = useState(null);
 
@@ -1713,6 +1794,65 @@ function AuraDashboard() {
       controller.abort();
     };
   }, [activeTab, otaBusy]);
+
+  useEffect(() => {
+    if (!otaRestartPending) return;
+
+    let disposed = false;
+    let retryTimerId = null;
+    let activeController = null;
+
+    const scheduleRetry = (delayMs) => {
+      if (disposed) return;
+      retryTimerId = setTimeout(probeDeviceOnline, delayMs);
+    };
+
+    const probeDeviceOnline = () => {
+      if (disposed) return;
+
+      activeController = new AbortController();
+      const timeoutId = setTimeout(() => {
+        if (activeController) {
+          activeController.abort();
+        }
+      }, 1500);
+
+      fetch('/api/state?probe=1', { cache: 'no-store', signal: activeController.signal })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((payload) => {
+          if (disposed) return;
+          if (payload && payload.success === false) {
+            throw new Error('device not ready');
+          }
+          window.location.reload();
+        })
+        .catch(() => {
+          if (disposed) return;
+          scheduleRetry(2000);
+        })
+        .finally(() => {
+          clearTimeout(timeoutId);
+          activeController = null;
+        });
+    };
+
+    scheduleRetry(1200);
+
+    return () => {
+      disposed = true;
+      if (retryTimerId) {
+        clearTimeout(retryTimerId);
+      }
+      if (activeController) {
+        activeController.abort();
+      }
+    };
+  }, [otaRestartPending]);
 
   const chartData = Array.isArray(chartApiData) ? chartApiData : [];
   const sensorHistory = Array.isArray(sensorHistoryData) ? sensorHistoryData : [];
@@ -2053,6 +2193,9 @@ function AuraDashboard() {
                   enabled={settings.backlight} 
                   onClick={toggleBacklight}
                 />
+                {toggleErrorMessage && (
+                  <div className="text-[11px] text-red-300/90">{toggleErrorMessage}</div>
+                )}
               </SettingGroup>
 
               <SettingGroup title="Connectivity">
