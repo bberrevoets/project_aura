@@ -461,6 +461,7 @@ void UiController::webSetFirmwareUpdateScreen(bool active) {
 
 void UiController::webRequestRestart() {
     LOGW("UI", "web restart requested");
+    lvgl_port_prepare_restart();
     delay(100);
     ESP.restart();
 }
@@ -1156,6 +1157,7 @@ void UiController::mqtt_apply_pending() {
     }
     if (pending.restart) {
         LOGI("UI", "MQTT restart requested");
+        lvgl_port_prepare_restart();
         delay(100);
         ESP.restart();
     }

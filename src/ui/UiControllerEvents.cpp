@@ -11,6 +11,7 @@
 
 #include "config/AppConfig.h"
 #include "core/Logger.h"
+#include "lvgl_v8_port.h"
 #include "modules/NetworkManager.h"
 #include "modules/MqttManager.h"
 #include "modules/SensorManager.h"
@@ -695,12 +696,14 @@ void UiController::on_confirm_ok_event(lv_event_t *e) {
         LOGI("UI", "SEN66 device reset done");
     } else if (action == CONFIRM_RESTART) {
         LOGW("UI", "restart requested");
+        lvgl_port_prepare_restart();
         delay(100);
         ESP.restart();
     } else if (action == CONFIRM_FACTORY_RESET) {
         LOGW("UI", "factory reset requested");
         storage.clearAll();
         WiFi.disconnect(true, true);
+        lvgl_port_prepare_restart();
         delay(100);
         ESP.restart();
     }

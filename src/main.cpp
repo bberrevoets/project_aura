@@ -30,6 +30,7 @@
 #include "ui/ThemeManager.h"
 #include "ui/BacklightManager.h"
 #include "ui/NightModeManager.h"
+#include "lvgl_v8_port.h"
 
 namespace {
 
@@ -51,6 +52,7 @@ MemoryMonitor memoryMonitor;
 uint32_t boot_start_ms = 0;
 bool boot_stable = false;
 constexpr uint32_t TASK_WDT_TIMEOUT_MS = 180000;
+constexpr uint32_t OTA_UI_QUIESCE_DELAY_MS = 120;
 
 bool night_mode = false;
 bool temp_units_c = true;
@@ -82,6 +84,9 @@ UiContext ui_context{
 };
 
 UiController uiController(ui_context);
+bool ota_window_active = false;
+bool ota_lvgl_quiesced = false;
+uint32_t ota_quiesce_due_ms = 0;
 
 } // namespace
 
@@ -143,18 +148,44 @@ void loop()
 {
     if (WebHandlersConsumeRestartRequest()) {
         LOGI("OTA", "restarting now (main loop)");
-        delay(20);
+        lvgl_port_prepare_restart();
         ESP.restart();
         return;
     }
 
     const bool ota_busy = WebHandlersIsOtaBusy();
+    const uint32_t now = millis();
+    if (ota_busy && !ota_window_active) {
+        ota_window_active = true;
+        ota_lvgl_quiesced = false;
+        ota_quiesce_due_ms = now + OTA_UI_QUIESCE_DELAY_MS;
+    } else if (!ota_busy && ota_window_active) {
+        ota_window_active = false;
+        if (ota_lvgl_quiesced) {
+            if (lvgl_port_resume()) {
+                LOGI("OTA", "LVGL resumed after OTA window");
+            } else {
+                LOGW("OTA", "failed to resume LVGL after OTA window");
+            }
+            ota_lvgl_quiesced = false;
+        }
+    }
+
     if (ota_busy) {
+        if (!ota_lvgl_quiesced && static_cast<int32_t>(now - ota_quiesce_due_ms) >= 0) {
+            if (lvgl_port_pause()) {
+                ota_lvgl_quiesced = true;
+                LOGI("OTA", "LVGL paused during OTA transfer");
+            } else {
+                LOGW("OTA", "failed to pause LVGL during OTA transfer");
+            }
+        }
         networkManager.poll();
-        uint32_t now = millis();
         storage.poll(now);
         memoryMonitor.poll(now);
-        uiController.poll(now);
+        if (!ota_lvgl_quiesced) {
+            uiController.poll(now);
+        }
         Watchdog::kick();
         delay(1);
         return;
@@ -165,7 +196,6 @@ void loop()
     uiController.onSensorPoll(sensor_poll);
     chartsHistory.update(currentData, storage);
     networkManager.poll();
-    uint32_t now = millis();
     BootPolicy::markStable(now,
                            boot_start_ms,
                            Config::SAFE_BOOT_STABLE_MS,

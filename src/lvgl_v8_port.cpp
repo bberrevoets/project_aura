@@ -22,6 +22,7 @@ static SemaphoreHandle_t lvgl_mux = nullptr;                  // LVGL mutex
 static TaskHandle_t lvgl_task_handle = nullptr;
 static esp_timer_handle_t lvgl_tick_timer = NULL;
 static bool lvgl_port_paused = false;
+static volatile bool lvgl_vsync_notify_enabled = true;
 static LCD *lvgl_port_lcd = nullptr;
 static void *lvgl_buf[LVGL_PORT_BUFFER_NUM_MAX] = {};
 static uint32_t lvgl_touch_read_block_until_ms = 0;
@@ -672,6 +673,14 @@ void flush_callback(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color
 
 IRAM_ATTR bool onLcdVsyncCallback(void *user_data)
 {
+    (void)user_data;
+    TaskHandle_t task_handle = lvgl_task_handle;
+    if (task_handle == nullptr) {
+        return false;
+    }
+    if (!lvgl_vsync_notify_enabled) {
+        return false;
+    }
     BaseType_t need_yield = pdFALSE;
     lvgl_diag_vsync_last_ms = get_rtos_ms_isr();
     ++lvgl_diag_vsync_count;
@@ -681,7 +690,6 @@ IRAM_ATTR bool onLcdVsyncCallback(void *user_data)
         lvgl_port_lcd_last_buf = lvgl_port_lcd_next_buf;
     }
 #else
-    TaskHandle_t task_handle = (TaskHandle_t)user_data;
     // Notify that the current LCD frame buffer has been transmitted
     xTaskNotifyFromISR(task_handle, ULONG_MAX, eNoAction, &need_yield);
 #endif
@@ -1125,6 +1133,7 @@ bool lvgl_port_init(LCD *lcd, Touch *tp)
     ESP_UTILS_CHECK_FALSE_RETURN(ret == pdPASS, false, "Create LVGL task failed");
 
 #if LVGL_PORT_AVOID_TEAR
+    lvgl_vsync_notify_enabled = true;
     lcd->attachRefreshFinishCallback(onLcdVsyncCallback, (void *)lvgl_task_handle);
 #endif
 
@@ -1209,6 +1218,7 @@ bool lvgl_port_pause(void)
     if (lvgl_port_paused) {
         return true;
     }
+    lvgl_vsync_notify_enabled = false;
 #if LVGL_PORT_AVOID_TEAR
     if (lvgl_port_lcd != nullptr) {
         lvgl_port_lcd->attachRefreshFinishCallback(nullptr, nullptr);
@@ -1241,6 +1251,7 @@ bool lvgl_port_resume(void)
     }
 #if LVGL_PORT_AVOID_TEAR
     if (lvgl_port_lcd != nullptr) {
+        lvgl_vsync_notify_enabled = true;
         lvgl_port_lcd->attachRefreshFinishCallback(onLcdVsyncCallback, (void *)lvgl_task_handle);
     }
 #endif
@@ -1255,6 +1266,7 @@ bool lvgl_port_resume(void)
 
 bool lvgl_port_deinit(void)
 {
+    lvgl_vsync_notify_enabled = false;
 #if !LV_TICK_CUSTOM
     ESP_UTILS_CHECK_FALSE_RETURN(tick_deinit(), false, "Deinitialize LVGL tick failed");
 #endif
@@ -1284,5 +1296,19 @@ bool lvgl_port_deinit(void)
         lvgl_mux = nullptr;
     }
 
+    return true;
+}
+
+bool lvgl_port_prepare_restart(void)
+{
+    // Prevent VSYNC ISR from notifying a task handle during reboot teardown.
+    lvgl_vsync_notify_enabled = false;
+    TaskHandle_t task = lvgl_task_handle;
+    TaskHandle_t current = xTaskGetCurrentTaskHandle();
+    if ((task != nullptr) && (task != current)) {
+        vTaskSuspend(task);
+    }
+    lvgl_task_handle = nullptr;
+    lvgl_port_paused = true;
     return true;
 }
