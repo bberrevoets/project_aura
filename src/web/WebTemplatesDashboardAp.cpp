@@ -1162,6 +1162,11 @@ let otaUploadInFlight = false;
 let otaRestartPending = false;
 let otaRecoveryTimer = null;
 let otaRecoveryActive = false;
+let otaRecoveryProbeController = null;
+const OTA_RECOVERY_PROBE_TIMEOUT_MS = 1500;
+const OTA_UPLOAD_MIN_TIMEOUT_MS = 180000;
+const OTA_UPLOAD_MAX_TIMEOUT_MS = 900000;
+const OTA_UPLOAD_MIN_BYTES_PER_SEC = 20 * 1024;
 let deviceClockRef = null;
 
 // Settings state
@@ -1181,12 +1186,18 @@ const toggleRequestState = {
   backlight_on: { inFlight: false, queued: null },
 };
 let toggleMsgTimer = null;
+let chartsRefreshToken = 0;
+let chartsRefreshController = null;
 
 // ─────────────────────────────────────────────
 // API helpers
 // ─────────────────────────────────────────────
-async function getJson(url) {
-  const r = await fetch(url, { cache: 'no-store' });
+async function getJson(url, init) {
+  const requestInit = init ? Object.assign({}, init) : {};
+  if (!Object.prototype.hasOwnProperty.call(requestInit, 'cache')) {
+    requestInit.cache = 'no-store';
+  }
+  const r = await fetch(url, requestInit);
   if (!r.ok) throw new Error('HTTP ' + r.status + ' for ' + url);
   return r.json();
 }
@@ -1209,6 +1220,10 @@ function stopOtaRecoveryWatcher() {
     clearTimeout(otaRecoveryTimer);
     otaRecoveryTimer = null;
   }
+  if (otaRecoveryProbeController) {
+    otaRecoveryProbeController.abort();
+    otaRecoveryProbeController = null;
+  }
 }
 
 function scheduleOtaRecoveryProbe(delayMs) {
@@ -1217,17 +1232,41 @@ function scheduleOtaRecoveryProbe(delayMs) {
     clearTimeout(otaRecoveryTimer);
     otaRecoveryTimer = null;
   }
+  if (otaRecoveryProbeController) {
+    otaRecoveryProbeController.abort();
+    otaRecoveryProbeController = null;
+  }
   otaRecoveryTimer = setTimeout(async () => {
     if (!otaRecoveryActive) return;
+    const controller = new AbortController();
+    otaRecoveryProbeController = controller;
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, OTA_RECOVERY_PROBE_TIMEOUT_MS);
     try {
-      const r = await fetch('/api/state?probe=1', { cache: 'no-store' });
+      const r = await fetch('/api/state?probe=1', { cache: 'no-store', signal: controller.signal });
       if (r.ok) {
         window.location.reload();
         return;
       }
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      clearTimeout(timeoutId);
+      if (otaRecoveryProbeController === controller) {
+        otaRecoveryProbeController = null;
+      }
+    }
     scheduleOtaRecoveryProbe(2000);
   }, delayMs);
+}
+
+function computeOtaTimeoutMs(sizeBytes) {
+  if (!isNum(sizeBytes) || sizeBytes <= 0) {
+    return OTA_UPLOAD_MIN_TIMEOUT_MS;
+  }
+  const transferMs = Math.ceil((sizeBytes * 1000) / OTA_UPLOAD_MIN_BYTES_PER_SEC);
+  const timeoutMs = transferMs + 120000;
+  return Math.min(OTA_UPLOAD_MAX_TIMEOUT_MS, Math.max(OTA_UPLOAD_MIN_TIMEOUT_MS, timeoutMs));
 }
 
 function startOtaRecoveryWatcher() {
@@ -1580,7 +1619,7 @@ function initOtaUI() {
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', '/api/ota', true);
-    xhr.timeout = 180000;
+    xhr.timeout = computeOtaTimeoutMs(file.size);
     xhr.upload.onprogress = ev => {
       if (!ev.lengthComputable || ev.total <= 0) return;
       const pct = Math.min(100, Math.round((ev.loaded / ev.total) * 100));
@@ -1676,8 +1715,33 @@ async function refreshSensorHistory() {
 
 async function refreshCharts() {
   if (otaUploadInFlight || otaRestartPending) return;
-  const payload = await getJson('/api/charts?group=' + encodeURIComponent(chartGroup) + '&window=' + encodeURIComponent(chartRange));
-  renderCharts(payload);
+  if (chartsRefreshController) {
+    chartsRefreshController.abort();
+    chartsRefreshController = null;
+  }
+  const token = ++chartsRefreshToken;
+  const controller = new AbortController();
+  chartsRefreshController = controller;
+
+  try {
+    const payload = await getJson(
+      '/api/charts?group=' + encodeURIComponent(chartGroup) + '&window=' + encodeURIComponent(chartRange),
+      { signal: controller.signal }
+    );
+    if (token !== chartsRefreshToken) {
+      return;
+    }
+    renderCharts(payload);
+  } catch (error) {
+    if (error && error.name === 'AbortError') {
+      return;
+    }
+    throw error;
+  } finally {
+    if (chartsRefreshController === controller) {
+      chartsRefreshController = null;
+    }
+  }
 }
 
 async function refreshEvents() {

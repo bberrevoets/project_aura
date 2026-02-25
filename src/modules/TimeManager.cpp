@@ -96,7 +96,10 @@ bool TimeManager::setNtpEnabledPref(bool enabled) {
     ntp_enabled_pref_ = enabled;
     if (storage_) {
         storage_->config().ntp_enabled = ntp_enabled_pref_;
-        storage_->saveConfig(true);
+        if (!storage_->saveConfig(true)) {
+            storage_->requestSave();
+            LOGE("Time", "failed to persist NTP preference");
+        }
     }
     return syncNtpWithWifi();
 }
@@ -161,7 +164,10 @@ bool TimeManager::setTimezoneIndex(int index) {
     applyTimezone();
     if (storage_) {
         storage_->config().tz_index = tz_index_;
-        storage_->saveConfig(true);
+        if (!storage_->saveConfig(true)) {
+            storage_->requestSave();
+            LOGE("Time", "failed to persist timezone index");
+        }
     }
     return changed;
 }
@@ -423,8 +429,9 @@ TimeManager::PollResult TimeManager::ntpPoll(uint32_t now_ms) {
                 return result;
             }
         }
-        if (now_ms - ntp_sync_start_ms_ > Config::NTP_SYNC_TIMEOUT_MS) {
-            uint32_t elapsed = now_ms - ntp_sync_start_ms_;
+        const uint32_t elapsed = now_ms - ntp_sync_start_ms_;
+        // Guard against sampling-order inversion where now_ms is taken before ntp_sync_start_ms_ is updated.
+        if (static_cast<int32_t>(elapsed) > static_cast<int32_t>(Config::NTP_SYNC_TIMEOUT_MS)) {
             LOGW("Time", "NTP sync timeout after %lu ms", static_cast<unsigned long>(elapsed));
             ntp_syncing_ = false;
             ntp_err_ = true;

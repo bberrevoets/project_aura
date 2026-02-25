@@ -166,6 +166,16 @@ bool lvgl_port_pause(void);
 bool lvgl_port_resume(void);
 
 /**
+ * @brief Prepare LVGL port for immediate system restart.
+ *
+ * Disables VSYNC task notifications and detaches refresh callback to avoid
+ * ISR activity using stale task handles during reboot transition.
+ *
+ * @return true if request accepted
+ */
+bool lvgl_port_prepare_restart(void);
+
+/**
  * @brief Lock the LVGL mutex. This function should be called before calling any LVGL APIs when not in LVGL task,
  *        and the `lvgl_port_unlock()` function should be called later.
  *

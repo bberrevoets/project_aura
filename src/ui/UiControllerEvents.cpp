@@ -8,9 +8,12 @@
 
 #include <WiFi.h>
 #include <math.h>
+#include <esp_wifi.h>
 
 #include "config/AppConfig.h"
 #include "core/Logger.h"
+#include "core/SafeRestart.h"
+#include "lvgl_v8_port.h"
 #include "modules/NetworkManager.h"
 #include "modules/MqttManager.h"
 #include "modules/SensorManager.h"
@@ -28,6 +31,15 @@ using namespace Config;
 namespace {
 
 constexpr uint32_t kWifiActionFeedbackMs = 220;
+
+bool persist_ui_config(StorageManager &storage, const char *what) {
+    if (storage.saveConfig(true)) {
+        return true;
+    }
+    storage.requestSave();
+    LOGE("UI", "failed to persist %s", what ? what : "settings");
+    return false;
+}
 
 void wifi_action_feedback_timer_cb(lv_timer_t *timer) {
     if (!timer) {
@@ -258,9 +270,9 @@ void UiController::on_back_event(lv_event_t *e) {
         language_saved = true;
     }
     if (save_config) {
-        storage.saveConfig(true);
-        if (offsets_saved) LOGI("UI", "offsets saved");
-        if (language_saved) LOGI("UI", "language saved");
+        const bool persisted = persist_ui_config(storage, "offset/language settings");
+        if (offsets_saved) LOGI("UI", persisted ? "offsets saved" : "offsets queued for save");
+        if (language_saved) LOGI("UI", persisted ? "language saved" : "language queued for save");
     }
     pending_screen_id = SCREEN_ID_PAGE_MAIN_PRO;
 }
@@ -545,7 +557,10 @@ void UiController::on_head_status_event(lv_event_t *e) {
     lv_obj_t *btn = lv_event_get_target(e);
     header_status_enabled = lv_obj_has_state(btn, LV_STATE_CHECKED);
     storage.config().header_status_enabled = header_status_enabled;
-    storage.saveConfig(true);
+    if (!storage.saveConfig(true)) {
+        storage.requestSave();
+        LOGE("UI", "failed to persist header status setting");
+    }
     data_dirty = true;
 }
 
@@ -683,14 +698,17 @@ void UiController::on_confirm_ok_event(lv_event_t *e) {
         LOGI("UI", "SEN66 device reset done");
     } else if (action == CONFIRM_RESTART) {
         LOGW("UI", "restart requested");
+        esp_wifi_stop();
+        lvgl_port_prepare_restart();
         delay(100);
-        ESP.restart();
+        safe_restart_via_core0();
     } else if (action == CONFIRM_FACTORY_RESET) {
         LOGW("UI", "factory reset requested");
         storage.clearAll();
         WiFi.disconnect(true, true);
+        lvgl_port_prepare_restart();
         delay(100);
-        ESP.restart();
+        safe_restart_via_core0();
     }
 }
 
@@ -725,7 +743,7 @@ void UiController::on_units_c_f_event(lv_event_t *e) {
     }
     temp_units_c = use_c;
     storage.config().units_c = temp_units_c;
-    storage.saveConfig(true);
+    persist_ui_config(storage, "temperature units");
     update_ui();
 }
 
@@ -740,7 +758,7 @@ void UiController::on_units_mdy_event(lv_event_t *e) {
     }
     date_units_mdy = use_mdy;
     storage.config().units_mdy = date_units_mdy;
-    storage.saveConfig(true);
+    persist_ui_config(storage, "date units");
     clock_ui_dirty = true;
     update_clock_labels();
 }
@@ -1536,7 +1554,7 @@ void UiController::on_led_indicators_event(lv_event_t *e) {
     }
     led_indicators_enabled = enabled;
     storage.config().led_indicators = led_indicators_enabled;
-    storage.saveConfig(true);
+    persist_ui_config(storage, "LED indicators");
     update_led_indicators();
 }
 
@@ -1572,7 +1590,7 @@ void UiController::on_co2_calib_asc_event(lv_event_t *e) {
     }
     co2_asc_enabled = enabled;
     storage.config().asc_enabled = co2_asc_enabled;
-    storage.saveConfig(true);
+    persist_ui_config(storage, "CO2 ASC");
     if (sensorManager.isOk()) {
         sensorManager.setAscEnabled(co2_asc_enabled);
     }
@@ -1974,7 +1992,7 @@ void UiController::on_alert_blink_event(lv_event_t *e) {
     }
     alert_blink_enabled = enabled;
     storage.config().alert_blink = alert_blink_enabled;
-    storage.saveConfig(true);
+    persist_ui_config(storage, "alert blink");
     if (night_mode) {
         night_blink_user_changed = true;
     }
@@ -2087,4 +2105,3 @@ void UiController::on_boot_diag_errors(lv_event_t *e) {
         lv_obj_add_flag(objects.container_diag_errors, LV_OBJ_FLAG_HIDDEN);
     }
 }
-

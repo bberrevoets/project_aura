@@ -9,6 +9,7 @@
 #include <string.h>
 #include <time.h>
 #include "modules/StorageManager.h"
+#include "core/Logger.h"
 #include "ui/ui.h"
 
 namespace {
@@ -59,8 +60,12 @@ void NightModeManager::savePrefs(StorageManager &storage) {
     cfg.auto_night_start_minute = start_minute_;
     cfg.auto_night_end_hour = end_hour_;
     cfg.auto_night_end_minute = end_minute_;
-    storage.saveConfig(true);
-    prefs_dirty_ = false;
+    if (storage.saveConfig(true)) {
+        prefs_dirty_ = false;
+    } else {
+        storage.requestSave();
+        LOGE("NightMode", "failed to persist auto-night settings");
+    }
 }
 
 void NightModeManager::setAutoEnabled(bool enabled) {

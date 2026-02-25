@@ -5,6 +5,7 @@
 // Purchase a Commercial License: see COMMERCIAL_LICENSE_SUMMARY.md
 
 #include <Arduino.h>
+#include <esp_wifi.h>
 
 #include "config/AppConfig.h"
 #include "config/AppData.h"
@@ -13,6 +14,7 @@
 #include "core/BootPolicy.h"
 #include "core/Logger.h"
 #include "core/MemoryMonitor.h"
+#include "core/SafeRestart.h"
 #include "core/Watchdog.h"
 
 #include "modules/StorageManager.h"
@@ -30,6 +32,7 @@
 #include "ui/ThemeManager.h"
 #include "ui/BacklightManager.h"
 #include "ui/NightModeManager.h"
+#include "lvgl_v8_port.h"
 
 namespace {
 
@@ -51,6 +54,7 @@ MemoryMonitor memoryMonitor;
 uint32_t boot_start_ms = 0;
 bool boot_stable = false;
 constexpr uint32_t TASK_WDT_TIMEOUT_MS = 180000;
+constexpr uint32_t OTA_UI_QUIESCE_DELAY_MS = 120;
 
 bool night_mode = false;
 bool temp_units_c = true;
@@ -82,7 +86,9 @@ UiContext ui_context{
 };
 
 UiController uiController(ui_context);
-
+bool ota_window_active = false;
+bool ota_lvgl_quiesced = false;
+uint32_t ota_quiesce_due_ms = 0;
 } // namespace
 
 void setup()
@@ -137,14 +143,59 @@ void setup()
     memoryMonitor.logNow("boot");
 
     Watchdog::setup(TASK_WDT_TIMEOUT_MS);
+    if (!safe_restart_init()) {
+        LOGW("Restart", "Core0 restart task init failed; controlled restart requests will abort");
+    }
 }
 
 void loop()
 {
     if (WebHandlersConsumeRestartRequest()) {
         LOGI("OTA", "restarting now (main loop)");
-        delay(20);
-        ESP.restart();
+        esp_wifi_stop();
+        lvgl_port_prepare_restart();
+        delay(50);
+        // Delegate restart to a dedicated Core 0 task so Core 0 is the initiator.
+        // This avoids using the small IPC task stack and reduces restart races.
+        // This eliminates the RUNSTALL timing race that caused "Cache disabled" panics.
+        safe_restart_via_core0();
+    }
+
+    const bool ota_busy = WebHandlersIsOtaBusy();
+    const uint32_t loop_now = millis();
+    if (ota_busy && !ota_window_active) {
+        ota_window_active = true;
+        ota_lvgl_quiesced = false;
+        ota_quiesce_due_ms = loop_now + OTA_UI_QUIESCE_DELAY_MS;
+    } else if (!ota_busy && ota_window_active) {
+        ota_window_active = false;
+        if (ota_lvgl_quiesced) {
+            if (lvgl_port_resume()) {
+                LOGI("OTA", "LVGL resumed after OTA window");
+            } else {
+                LOGW("OTA", "failed to resume LVGL after OTA window");
+            }
+            ota_lvgl_quiesced = false;
+        }
+    }
+
+    if (ota_busy) {
+        if (!ota_lvgl_quiesced && static_cast<int32_t>(loop_now - ota_quiesce_due_ms) >= 0) {
+            if (lvgl_port_pause()) {
+                ota_lvgl_quiesced = true;
+                LOGI("OTA", "LVGL paused during OTA transfer");
+            } else {
+                LOGW("OTA", "failed to pause LVGL during OTA transfer");
+            }
+        }
+        networkManager.poll();
+        storage.poll(loop_now);
+        memoryMonitor.poll(loop_now);
+        if (!ota_lvgl_quiesced) {
+            uiController.poll(loop_now);
+        }
+        Watchdog::kick();
+        delay(1);
         return;
     }
 
@@ -153,7 +204,7 @@ void loop()
     uiController.onSensorPoll(sensor_poll);
     chartsHistory.update(currentData, storage);
     networkManager.poll();
-    uint32_t now = millis();
+    const uint32_t now = millis();
     BootPolicy::markStable(now,
                            boot_start_ms,
                            Config::SAFE_BOOT_STABLE_MS,
@@ -164,13 +215,10 @@ void loop()
     uiController.onTimePoll(time_poll);
     fanControl.poll(now, &currentData, sensorManager.isWarmupActive());
     mqttManager.poll(currentData, night_mode, alert_blink_enabled, backlightManager.isOn());
-    const bool ota_busy = WebHandlersIsOtaBusy();
-    if (ota_busy) {
-        networkManager.poll();
-    }
     storage.poll(now);
     memoryMonitor.poll(now);
     uiController.poll(now);
     Watchdog::kick();
-    delay(ota_busy ? 1 : 10);
+    delay(10);
 }
+

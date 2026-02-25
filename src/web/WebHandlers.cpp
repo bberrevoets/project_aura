@@ -25,6 +25,7 @@
 #include "modules/FanControl.h"
 #include "modules/SensorManager.h"
 #include "modules/StorageManager.h"
+#include "web/OtaDeferredRestart.h"
 #include "web/WebTemplates.h"
 #include "ui/UiController.h"
 #include "ui/ThemeManager.h"
@@ -40,11 +41,9 @@ constexpr uint32_t kDeferredActionDelayMs = 200;
 constexpr uint32_t kDeferredRestartDelayMs = 1500;
 bool g_deferred_wifi_start_sta = false;
 bool g_deferred_mqtt_sync = false;
-bool g_deferred_restart = false;
-bool g_restart_requested = false;
+OtaDeferredRestart::Controller g_restart_controller;
 uint32_t g_deferred_wifi_start_sta_due_ms = 0;
 uint32_t g_deferred_mqtt_sync_due_ms = 0;
-uint32_t g_deferred_restart_due_ms = 0;
 constexpr uint32_t kChartStepS = Config::CHART_HISTORY_STEP_MS / 1000UL;
 constexpr size_t kEventsApiMaxEntries = 48;
 constexpr size_t kWebDisplayNameMaxLen = 32;
@@ -88,6 +87,19 @@ constexpr ChartMetricSpec kChartPmMetrics[] = {
 
 WebHandlerContext *ctx() {
     return g_ctx;
+}
+
+bool persist_dac_auto_mode(StorageManager &storage, bool enabled) {
+    const bool previous = storage.config().dac_auto_mode;
+    if (previous == enabled) {
+        return true;
+    }
+    storage.config().dac_auto_mode = enabled;
+    if (!storage.saveConfig(true)) {
+        storage.config().dac_auto_mode = previous;
+        return false;
+    }
+    return true;
 }
 
 uint16_t chart_window_points(const String &window_arg, const char *&window_name) {
@@ -153,6 +165,29 @@ bool chart_latest_metric(const ChartsHistory &history,
 
 bool deadline_reached(uint32_t now_ms, uint32_t due_ms) {
     return static_cast<int32_t>(now_ms - due_ms) >= 0;
+}
+
+uint32_t ota_upload_timeout_ms(size_t image_size_bytes) {
+    constexpr uint32_t kMinTimeoutMs = 180000;
+    constexpr uint32_t kMaxTimeoutMs = 900000;
+    constexpr uint32_t kMinUploadBytesPerSec = 20 * 1024;
+    constexpr uint32_t kOverheadMs = 120000;
+
+    if (image_size_bytes == 0) {
+        return kMaxTimeoutMs;
+    }
+
+    const uint64_t transfer_ms =
+        (static_cast<uint64_t>(image_size_bytes) * 1000ULL + kMinUploadBytesPerSec - 1) /
+        kMinUploadBytesPerSec;
+    const uint64_t timeout_ms = transfer_ms + kOverheadMs;
+    if (timeout_ms <= kMinTimeoutMs) {
+        return kMinTimeoutMs;
+    }
+    if (timeout_ms >= kMaxTimeoutMs) {
+        return kMaxTimeoutMs;
+    }
+    return static_cast<uint32_t>(timeout_ms);
 }
 
 void ota_reset_state() {
@@ -434,24 +469,18 @@ void WebHandlersInit(WebHandlerContext *context) {
     g_ctx = context;
     g_deferred_wifi_start_sta = false;
     g_deferred_mqtt_sync = false;
-    g_deferred_restart = false;
-    g_restart_requested = false;
+    g_restart_controller.reset();
     g_deferred_wifi_start_sta_due_ms = 0;
     g_deferred_mqtt_sync_due_ms = 0;
-    g_deferred_restart_due_ms = 0;
     ota_reset_state();
 }
 
 bool WebHandlersIsOtaBusy() {
-    return g_ota_upload_active || g_deferred_restart || g_restart_requested;
+    return g_restart_controller.is_busy(g_ota_upload_active);
 }
 
 bool WebHandlersConsumeRestartRequest() {
-    if (!g_restart_requested) {
-        return false;
-    }
-    g_restart_requested = false;
-    return true;
+    return g_restart_controller.consume_request();
 }
 
 void WebHandlersPollDeferred() {
@@ -477,10 +506,7 @@ void WebHandlersPollDeferred() {
         }
     }
 
-    if (g_deferred_restart && deadline_reached(now_ms, g_deferred_restart_due_ms)) {
-        g_deferred_restart = false;
-        g_deferred_restart_due_ms = 0;
-        g_restart_requested = true;
+    if (g_restart_controller.poll(now_ms)) {
         LOGI("OTA", "deferred reboot: restart requested");
     }
 }
@@ -557,6 +583,7 @@ void wifi_handle_root() {
         return;
     }
     if (!context->wifi_is_ap_mode || !context->wifi_is_ap_mode()) {
+        send_no_store_headers(*context->server);
         context->server->send(404, "text/plain", "Not found");
         return;
     }
@@ -568,6 +595,7 @@ void wifi_handle_root() {
         doc["scan_in_progress"] = context->wifi_scan_in_progress && *context->wifi_scan_in_progress;
         String json;
         serializeJson(doc, json);
+        send_no_store_headers(server);
         server.send(200, "application/json", json);
         return;
     }
@@ -588,6 +616,7 @@ void wifi_handle_root() {
     html.replace("{{SSID_ITEMS}}", list_items);
     html.replace("{{SCAN_IN_PROGRESS}}",
                  (context->wifi_scan_in_progress && *context->wifi_scan_in_progress) ? "1" : "0");
+    send_no_store_headers(server);
     server.send(200, "text/html", html);
 }
 
@@ -1063,18 +1092,20 @@ void dac_handle_action() {
     const String action = String(doc["action"] | "");
     if (action == "set_mode") {
         const String mode = String(doc["mode"] | "");
+        bool auto_mode = false;
         if (mode == "manual") {
-            fan.setMode(FanControl::Mode::Manual);
-            context->storage->config().dac_auto_mode = false;
-            context->storage->saveConfig(true);
+            auto_mode = false;
         } else if (mode == "auto") {
-            fan.setMode(FanControl::Mode::Auto);
-            context->storage->config().dac_auto_mode = true;
-            context->storage->saveConfig(true);
+            auto_mode = true;
         } else {
             server.send(400, "text/plain", "Invalid mode");
             return;
         }
+        if (!persist_dac_auto_mode(*context->storage, auto_mode)) {
+            server.send(500, "text/plain", "Failed to persist DAC mode");
+            return;
+        }
+        fan.setMode(auto_mode ? FanControl::Mode::Auto : FanControl::Mode::Manual);
     } else if (action == "set_manual_step") {
         fan.setManualStep(doc["step"] | 1);
     } else if (action == "set_timer") {
@@ -1084,9 +1115,11 @@ void dac_handle_action() {
     } else if (action == "stop") {
         fan.requestStop();
     } else if (action == "start_auto") {
+        if (!persist_dac_auto_mode(*context->storage, true)) {
+            server.send(500, "text/plain", "Failed to persist DAC auto mode");
+            return;
+        }
         fan.requestAutoStart();
-        context->storage->config().dac_auto_mode = true;
-        context->storage->saveConfig(true);
     } else {
         server.send(400, "text/plain", "Unsupported action");
         return;
@@ -1128,18 +1161,19 @@ void dac_handle_auto() {
     }
 
     const bool rearm = root["rearm"] | false;
-    fan.setAutoConfig(config);
     String serialized = DacAutoConfigJson::serialize(config);
     if (!context->storage->saveTextAtomic(StorageManager::kDacAutoPath, serialized)) {
         server.send(500, "text/plain", "Failed to persist auto config");
         return;
     }
+    if (rearm && !persist_dac_auto_mode(*context->storage, true)) {
+        server.send(500, "text/plain", "Failed to persist DAC auto mode");
+        return;
+    }
+
+    fan.setAutoConfig(config);
     if (rearm) {
         fan.requestAutoStart();
-        if (!context->storage->config().dac_auto_mode) {
-            context->storage->config().dac_auto_mode = true;
-            context->storage->saveConfig(true);
-        }
     }
     server.send(200, "application/json", "{\"success\":true}");
 }
@@ -1354,6 +1388,11 @@ void settings_handle_update() {
     if (!context || !context->server) {
         return;
     }
+    if (WebHandlersIsOtaBusy()) {
+        context->server->send(503, "application/json",
+                              "{\"success\":false,\"error\":\"OTA upload in progress\"}");
+        return;
+    }
 
     WebServer &server = *context->server;
     if (!context->ui_controller) {
@@ -1474,24 +1513,104 @@ void settings_handle_update() {
         restart_requested = restart_var.as<bool>();
     }
 
-    // Apply only after full validation.
-    if (has_backlight && !ui.webSetBacklight(requested_backlight)) {
-        server.send(409, "text/plain", "backlight state could not be applied");
-        return;
-    }
-    if (has_night_mode && !ui.webSetNightMode(requested_night_mode)) {
-        server.send(409, "text/plain", "night_mode is locked by auto mode");
-        return;
-    }
+    const bool previous_backlight = ui.webBacklightOn();
+    const bool previous_night_mode = ui.webNightModeEnabled();
+    const bool previous_units_c = ui.webUnitsC();
+    const float previous_temp_offset = ui.webTempOffset();
+    const float previous_hum_offset = ui.webHumOffset();
+    const String previous_display_name =
+        (has_display_name && context->storage) ? context->storage->config().web_display_name : String();
+
+    bool applied_backlight = false;
+    bool applied_night_mode = false;
+    bool applied_units = false;
+    bool applied_offsets = false;
+    bool applied_display_name = false;
+
+    auto rollback = [&]() -> bool {
+        bool rollback_failed = false;
+
+        if (applied_backlight && ui.webBacklightOn() != previous_backlight) {
+            if (!ui.webSetBacklight(previous_backlight)) {
+                rollback_failed = true;
+            }
+        }
+        if (applied_night_mode && ui.webNightModeEnabled() != previous_night_mode) {
+            if (!ui.webSetNightMode(previous_night_mode)) {
+                rollback_failed = true;
+            }
+        }
+        if (applied_units && ui.webUnitsC() != previous_units_c) {
+            if (!ui.webSetUnitsC(previous_units_c)) {
+                rollback_failed = true;
+            }
+        }
+        if (applied_offsets) {
+            const bool temp_changed = fabsf(ui.webTempOffset() - previous_temp_offset) > 0.0001f;
+            const bool hum_changed = fabsf(ui.webHumOffset() - previous_hum_offset) > 0.0001f;
+            if ((temp_changed || hum_changed) &&
+                !ui.webSetOffsets(previous_temp_offset, previous_hum_offset)) {
+                rollback_failed = true;
+            }
+        }
+        if (applied_display_name && context->storage) {
+            context->storage->config().web_display_name = previous_display_name;
+            if (!context->storage->saveConfig(true)) {
+                context->storage->requestSave();
+                rollback_failed = true;
+            }
+        }
+
+        return !rollback_failed;
+    };
+
+    auto respond_apply_failure = [&](int status_code, const char *message) {
+        if (!rollback()) {
+            LOGE("Web", "/api/settings rollback failed");
+            server.send(500, "text/plain", "Failed to apply settings atomically");
+            return;
+        }
+        server.send(status_code, "text/plain", message);
+    };
+
+    // Apply only after full validation; on any failure, rollback previous changes.
     if (has_units_c) {
-        ui.webSetUnitsC(requested_units_c);
+        if (!ui.webSetUnitsC(requested_units_c)) {
+            respond_apply_failure(500, "Failed to persist units setting");
+            return;
+        }
+        applied_units = true;
     }
     if (has_offsets) {
-        ui.webSetOffsets(requested_temp_offset, requested_hum_offset);
+        if (!ui.webSetOffsets(requested_temp_offset, requested_hum_offset)) {
+            respond_apply_failure(500, "Failed to persist offsets");
+            return;
+        }
+        applied_offsets = true;
     }
-    if (has_display_name) {
+    if (has_display_name && context->storage) {
         context->storage->config().web_display_name = requested_display_name;
-        context->storage->saveConfig(true);
+        if (!context->storage->saveConfig(true)) {
+            context->storage->config().web_display_name = previous_display_name;
+            context->storage->requestSave();
+            respond_apply_failure(500, "Failed to persist display_name");
+            return;
+        }
+        applied_display_name = true;
+    }
+    if (has_night_mode) {
+        if (!ui.webSetNightMode(requested_night_mode)) {
+            respond_apply_failure(409, "night_mode is locked by auto mode");
+            return;
+        }
+        applied_night_mode = true;
+    }
+    if (has_backlight) {
+        if (!ui.webSetBacklight(requested_backlight)) {
+            respond_apply_failure(409, "backlight state could not be applied");
+            return;
+        }
+        applied_backlight = true;
     }
 
     ArduinoJson::JsonDocument response_doc;
@@ -1505,7 +1624,9 @@ void settings_handle_update() {
     server.send(200, "application/json", json);
 
     if (restart_requested) {
-        ui.webRequestRestart();
+        g_restart_controller.schedule(millis(), kDeferredActionDelayMs);
+        LOGI("Web", "settings restart requested, deferred reboot in %u ms",
+             static_cast<unsigned>(kDeferredActionDelayMs));
     }
 }
 
@@ -1522,7 +1643,10 @@ void ota_handle_upload() {
         ota_reset_state();
         g_ota_upload_seen = true;
         g_ota_upload_active = true;
-        server.client().setTimeout(Config::OTA_HTTP_CLIENT_TIMEOUT_MS);
+        size_t expected_size = 0;
+        const bool size_known = parse_size_arg(server.arg("ota_size"), expected_size);
+        const uint32_t client_timeout_ms = ota_upload_timeout_ms(size_known ? expected_size : 0);
+        server.client().setTimeout(client_timeout_ms);
         if (context->wifi_stop_scan) {
             context->wifi_stop_scan();
         }
@@ -1535,9 +1659,7 @@ void ota_handle_upload() {
             return;
         }
         g_ota_slot_size = target_partition->size;
-
-        size_t expected_size = 0;
-        g_ota_size_known = parse_size_arg(server.arg("ota_size"), expected_size);
+        g_ota_size_known = size_known;
         if (g_ota_size_known) {
             g_ota_expected_size = expected_size;
             if (g_ota_expected_size > g_ota_slot_size) {
@@ -1562,10 +1684,11 @@ void ota_handle_upload() {
             }
         }
 
-        LOGI("OTA", "upload started (slot=%u, expected=%u, known=%s)",
+        LOGI("OTA", "upload started (slot=%u, expected=%u, known=%s, timeout=%u ms)",
              static_cast<unsigned>(g_ota_slot_size),
              static_cast<unsigned>(g_ota_expected_size),
-             g_ota_size_known ? "YES" : "NO");
+             g_ota_size_known ? "YES" : "NO",
+             static_cast<unsigned>(client_timeout_ms));
         return;
     }
 
@@ -1693,8 +1816,7 @@ void ota_handle_update() {
     if (success) {
         LOGI("OTA", "response sent, deferred reboot in %u ms",
              static_cast<unsigned>(kDeferredRestartDelayMs));
-        g_deferred_restart = true;
-        g_deferred_restart_due_ms = millis() + kDeferredRestartDelayMs;
+        g_restart_controller.schedule(millis(), kDeferredRestartDelayMs);
     } else {
         ota_set_ui_screen(false);
     }

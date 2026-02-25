@@ -14,6 +14,7 @@
 #include <string.h>
 #include <time.h>
 #include <esp_system.h>
+#include <esp_wifi.h>
 
 #include "lvgl_v8_port.h"
 #include "ui/ui.h"
@@ -24,6 +25,7 @@
 #include "config/AppConfig.h"
 #include "core/BootState.h"
 #include "core/Logger.h"
+#include "core/SafeRestart.h"
 #include "modules/StorageManager.h"
 #include "modules/NetworkManager.h"
 #include "modules/MqttManager.h"
@@ -327,9 +329,16 @@ bool UiController::webSetUnitsC(bool units_c) {
     if (units_c == temp_units_c) {
         return true;
     }
+    const bool previous_units_c = temp_units_c;
     temp_units_c = units_c;
     storage.config().units_c = temp_units_c;
-    storage.saveConfig(true);
+    if (!storage.saveConfig(true)) {
+        temp_units_c = previous_units_c;
+        storage.config().units_c = previous_units_c;
+        update_ui();
+        LOGE("UI", "failed to persist temperature unit change");
+        return false;
+    }
     update_ui();
     mqttManager.requestPublish();
     return true;
@@ -350,6 +359,15 @@ bool UiController::webSetOffsets(float temp_offset_c, float hum_offset_pct) {
         hum_next = HUM_OFFSET_MAX;
     }
 
+    const float prev_temp_offset = temp_offset;
+    const float prev_hum_offset = hum_offset;
+    const float prev_temp_offset_saved = temp_offset_saved;
+    const float prev_hum_offset_saved = hum_offset_saved;
+    const bool prev_temp_offset_dirty = temp_offset_dirty;
+    const bool prev_hum_offset_dirty = hum_offset_dirty;
+    const float prev_cfg_temp_offset = storage.config().temp_offset;
+    const float prev_cfg_hum_offset = storage.config().hum_offset;
+
     bool changed = (temp_next != temp_offset) || (hum_next != hum_offset);
     temp_offset = temp_next;
     hum_offset = hum_next;
@@ -367,7 +385,21 @@ bool UiController::webSetOffsets(float temp_offset_c, float hum_offset_pct) {
     hum_offset_dirty = false;
     storage.config().temp_offset = temp_offset;
     storage.config().hum_offset = hum_offset;
-    storage.saveConfig(true);
+    if (!storage.saveConfig(true)) {
+        temp_offset = prev_temp_offset;
+        hum_offset = prev_hum_offset;
+        temp_offset_saved = prev_temp_offset_saved;
+        hum_offset_saved = prev_hum_offset_saved;
+        temp_offset_dirty = prev_temp_offset_dirty;
+        hum_offset_dirty = prev_hum_offset_dirty;
+        storage.config().temp_offset = prev_cfg_temp_offset;
+        storage.config().hum_offset = prev_cfg_hum_offset;
+        sensorManager.setOffsets(temp_offset, hum_offset);
+        temp_offset_ui_dirty = true;
+        hum_offset_ui_dirty = true;
+        LOGE("UI", "failed to persist sensor offsets");
+        return false;
+    }
     data_dirty = true;
     mqttManager.requestPublish();
     return true;
@@ -431,8 +463,10 @@ void UiController::webSetFirmwareUpdateScreen(bool active) {
 
 void UiController::webRequestRestart() {
     LOGW("UI", "web restart requested");
+    esp_wifi_stop();
+    lvgl_port_prepare_restart();
     delay(100);
-    ESP.restart();
+    safe_restart_via_core0();
 }
 
 void UiController::poll(uint32_t now) {
@@ -976,7 +1010,10 @@ void UiController::set_night_mode_state(bool enabled, bool save_pref) {
         night_mode = enabled;
         if (save_pref) {
             storage.config().night_mode = enabled;
-            storage.saveConfig(true);
+            if (!storage.saveConfig(true)) {
+                storage.requestSave();
+                LOGE("UI", "failed to persist night mode preference");
+            }
         }
         return;
     }
@@ -1000,7 +1037,10 @@ void UiController::set_night_mode_state(bool enabled, bool save_pref) {
     }
     if (save_pref) {
         storage.config().night_mode = enabled;
-        storage.saveConfig(true);
+        if (!storage.saveConfig(true)) {
+            storage.requestSave();
+            LOGE("UI", "failed to persist night mode preference");
+        }
     }
 }
 
@@ -1098,7 +1138,10 @@ void UiController::mqtt_apply_pending() {
         if (alert_blink_enabled != pending.alert_blink_value) {
             alert_blink_enabled = pending.alert_blink_value;
             storage.config().alert_blink = alert_blink_enabled;
-            storage.saveConfig(true);
+            if (!storage.saveConfig(true)) {
+                storage.requestSave();
+                LOGE("UI", "failed to persist alert blink change from MQTT");
+            }
             if (alert_blink_enabled) {
                 blink_state = true;
                 last_blink_ms = millis();
@@ -1117,8 +1160,10 @@ void UiController::mqtt_apply_pending() {
     }
     if (pending.restart) {
         LOGI("UI", "MQTT restart requested");
+        esp_wifi_stop();
+        lvgl_port_prepare_restart();
         delay(100);
-        ESP.restart();
+        safe_restart_via_core0();
     }
     if (publish_needed) {
         mqttManager.requestPublish();
