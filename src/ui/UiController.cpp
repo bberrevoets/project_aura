@@ -1286,6 +1286,8 @@ void UiController::update_led_indicators() {
                                   : lv_obj_add_flag(objects.dot_ah_1, LV_OBJ_FLAG_HIDDEN);
     if (objects.dot_pm25_1) visible ? lv_obj_clear_flag(objects.dot_pm25_1, LV_OBJ_FLAG_HIDDEN)
                                     : lv_obj_add_flag(objects.dot_pm25_1, LV_OBJ_FLAG_HIDDEN);
+    if (objects.dot_pm05) visible ? lv_obj_clear_flag(objects.dot_pm05, LV_OBJ_FLAG_HIDDEN)
+                                  : lv_obj_add_flag(objects.dot_pm05, LV_OBJ_FLAG_HIDDEN);
     if (objects.dot_pm10_pro) visible ? lv_obj_clear_flag(objects.dot_pm10_pro, LV_OBJ_FLAG_HIDDEN)
                                       : lv_obj_add_flag(objects.dot_pm10_pro, LV_OBJ_FLAG_HIDDEN);
     if (objects.dot_pm1) visible ? lv_obj_clear_flag(objects.dot_pm1, LV_OBJ_FLAG_HIDDEN)
