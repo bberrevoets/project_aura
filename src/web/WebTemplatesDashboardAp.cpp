@@ -75,8 +75,8 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
       font-size: 13px;
       color: #9ca3af;
       font-weight: 600;
-      letter-spacing: .06em;
-      text-transform: uppercase;
+      letter-spacing: .03em;
+      text-transform: none;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -128,12 +128,28 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
     }
     .net-status-text { font-size: 12px; font-weight: 700; letter-spacing: 0.01em; }
     .net-status-meta { font-size: 11px; color: #9ca3af; }
-    .net-status.ok { border-color: rgba(34,197,94,.45); background: rgba(20,83,45,.35); }
-    .net-status.ok .net-status-text { color: #86efac; }
+    .net-status.ok {
+      margin: -2px 0 10px;
+      padding: 2px 0 4px;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    .net-status.ok .net-status-text {
+      color: #6b7280;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .01em;
+    }
+    .net-status.ok .net-status-meta { display: none; }
     .net-status.warn { border-color: rgba(245,158,11,.45); background: rgba(120,53,15,.28); }
     .net-status.warn .net-status-text { color: #fcd34d; }
     .net-status.err { border-color: rgba(239,68,68,.45); background: rgba(127,29,29,.32); }
     .net-status.err .net-status-text { color: #fca5a5; }
+    .net-status.warn .net-status-meta,
+    .net-status.err .net-status-meta { display: inline; }
 
     /* ── Tab nav ── */
     .tab-nav { display: flex; flex-wrap: wrap; background: #1f2937; padding: 4px; border-radius: 12px; margin-bottom: 16px; border: 1px solid rgba(55,65,81,.5); gap: 4px; }
