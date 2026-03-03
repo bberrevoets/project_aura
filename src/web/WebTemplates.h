@@ -374,10 +374,10 @@ static const char kWifiPageTemplate[] PROGMEM = R"HTML(
                             window.location.replace('/');
                             return;
                         }
-                        setTimeout(poll, 4000);
+                        setTimeout(poll, 5000);
                     })
                     .catch(function() {
-                        setTimeout(poll, 6000);
+                        setTimeout(poll, 8000);
                     });
             };
             setTimeout(poll, 2000);
@@ -1459,6 +1459,10 @@ static const char kThemePageTemplate[] PROGMEM = R"HTML(
       transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); opacity: 0; z-index: 1000;
     }
     .toast-notification.visible { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .toast-notification.error {
+      background: #ef4444;
+      box-shadow: 0 16px 32px -8px rgba(239, 68, 68, 0.45);
+    }
 
     .hidden { display: none !important; }
     .mt-3 { margin-top: 12px; }
@@ -1656,7 +1660,12 @@ static const char kThemePageTemplate[] PROGMEM = R"HTML(
       render();
     });
 
-    const showToast = () => {
+    const showToast = (message, isError) => {
+      const textEl = elements.toast.querySelector('span');
+      if (textEl) {
+        textEl.textContent = message || (isError ? "Failed to sync theme" : "Theme Synchronized!");
+      }
+      elements.toast.classList.toggle('error', !!isError);
       elements.toast.classList.add('visible');
       setTimeout(() => elements.toast.classList.remove('visible'), 3000);
     };
@@ -1682,9 +1691,27 @@ static const char kThemePageTemplate[] PROGMEM = R"HTML(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
-        if (res.ok) {
-          showToast();
+        if (!res.ok) {
+          let message = "";
+          try {
+            const body = await res.json();
+            if (body && typeof body.error === "string" && body.error) {
+              message = body.error;
+            }
+          } catch (_) {}
+          if (!message) {
+            if (res.status === 503) {
+              message = "OTA in progress. Theme update is temporarily locked.";
+            } else {
+              message = "Failed to apply theme (HTTP " + res.status + ")";
+            }
+          }
+          showToast(message, true);
+          return;
         }
+        showToast("Theme synchronized!", false);
+      } catch (_) {
+        showToast("Theme sync failed. Check connection and retry.", true);
       } finally {
         elements.applyBtn.disabled = false;
         elements.applyBtn.innerText = originalText;

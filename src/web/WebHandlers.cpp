@@ -804,6 +804,10 @@ void wifi_handle_save() {
         server.send(409, "text/plain", "WiFi save allowed only in AP setup mode");
         return;
     }
+    if (WebHandlersIsOtaBusy()) {
+        server.send(503, "text/plain", "OTA in progress");
+        return;
+    }
     String ssid = server.arg("ssid");
     String pass = server.arg("pass");
     ssid.trim();
@@ -1042,6 +1046,10 @@ void mqtt_handle_save() {
     }
     if (!context->mqtt_ui_open || !*context->mqtt_ui_open) {
         server.send(409, "text/plain", "Open MQTT screen to enable");
+        return;
+    }
+    if (WebHandlersIsOtaBusy()) {
+        server.send(503, "text/plain", "OTA in progress");
         return;
     }
 
