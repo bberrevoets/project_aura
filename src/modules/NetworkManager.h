@@ -89,6 +89,7 @@ private:
     WifiState wifi_state_ = WIFI_STATE_OFF;
     WifiState wifi_state_last_ = WIFI_STATE_OFF;
     uint32_t wifi_connect_start_ms_ = 0;
+    uint8_t sta_link_fail_streak_ = 0;
     String wifi_ssid_;
     String wifi_pass_;
     String hostname_;

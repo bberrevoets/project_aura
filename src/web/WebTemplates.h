@@ -9,7 +9,8 @@
 
 namespace WebTemplates {
 
-extern const char kDashboardPageTemplateAp[] PROGMEM;
+extern const uint8_t kDashboardPageTemplateApGzip[] PROGMEM;
+extern const size_t kDashboardPageTemplateApGzipSize;
 
 static const char kWifiListScanning[] PROGMEM = R"HTML(
 <div class="network-item disabled">

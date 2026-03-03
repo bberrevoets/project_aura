@@ -8,6 +8,7 @@
 
 namespace WebTemplates {
 
+#if 0
 const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
 <!doctype html>
 <html lang="en">
@@ -2467,6 +2468,9 @@ refreshSensorHistory().catch(() => {});
 </body>
 </html>
 )HTML_DASH_AP";
+#endif
+
+#include "web/generated/WebTemplatesDashboardApGzip.inc"
 
 } // namespace WebTemplates
 

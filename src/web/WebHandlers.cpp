@@ -788,7 +788,13 @@ void dashboard_handle_root() {
     }
 
     send_no_store_headers(*context->server);
-    context->server->send_P(200, "text/html", WebTemplates::kDashboardPageTemplateAp);
+    context->server->setContentLength(WebTemplates::kDashboardPageTemplateApGzipSize);
+    context->server->sendHeader("Content-Encoding", "gzip");
+    context->server->send(200, "text/html", "");
+    context->server->sendContent_P(
+        reinterpret_cast<PGM_P>(WebTemplates::kDashboardPageTemplateApGzip),
+        WebTemplates::kDashboardPageTemplateApGzipSize
+    );
 }
 
 void wifi_handle_save() {

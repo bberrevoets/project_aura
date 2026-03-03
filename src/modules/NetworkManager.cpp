@@ -22,6 +22,7 @@ const uint32_t kInitialWifiConnectDelayMs = 1000;
 constexpr uint32_t kWifiInternalHeapMinFreeForStart = 32UL * 1024UL;
 constexpr uint32_t kWifiInternalHeapMinLargestForStart = 16UL * 1024UL;
 constexpr uint32_t kWifiScanTimeoutMs = 20000UL;
+constexpr uint8_t kStaLinkFailThreshold = 3;
 
 bool has_internal_heap_for_wifi_start(uint32_t &free_bytes, uint32_t &largest_block_bytes) {
     free_bytes = heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
@@ -405,6 +406,7 @@ void AuraNetworkManager::poll() {
         wl_status_t st = WiFi.status();
         if (st == WL_CONNECTED) {
             wifi_state_ = WIFI_STATE_STA_CONNECTED;
+            sta_link_fail_streak_ = 0;
             wifi_retry_count_ = 0;
             wifi_retry_at_ms_ = 0;
             wifi_ui_dirty_ = true;
@@ -475,19 +477,35 @@ void AuraNetworkManager::poll() {
         if (now - last_check_ms >= 5000) {
             last_check_ms = now;
             wl_status_t st = WiFi.status();
-            if (st != WL_CONNECTED) {
-                const char *rssi_text = "n/a";
-                Logger::log(Logger::Warn, "WiFi",
-                            "connection lost detected (status=%d, was connected for %u seconds, RSSI was %s)",
-                            static_cast<int>(st),
-                            static_cast<unsigned>((now - wifi_connect_start_ms_) / 1000),
-                            rssi_text);
-                stopMdns();
-                server_.stop();
-                wifi_state_ = WIFI_STATE_OFF;
-                wifi_retry_at_ms_ = now + Config::WIFI_CONNECT_RETRY_DELAY_MS;
-                wifi_retry_count_ = 0;
-                wifi_ui_dirty_ = true;
+            if (st == WL_CONNECTED) {
+                sta_link_fail_streak_ = 0;
+            } else {
+                if (sta_link_fail_streak_ < UINT8_MAX) {
+                    sta_link_fail_streak_++;
+                }
+                if (sta_link_fail_streak_ < kStaLinkFailThreshold) {
+                    Logger::log(Logger::Warn, "WiFi",
+                                "transient link status=%d (%u/%u), keep server alive",
+                                static_cast<int>(st),
+                                static_cast<unsigned>(sta_link_fail_streak_),
+                                static_cast<unsigned>(kStaLinkFailThreshold));
+                }
+                if (sta_link_fail_streak_ >= kStaLinkFailThreshold) {
+                    const char *rssi_text = "n/a";
+                    Logger::log(Logger::Warn, "WiFi",
+                                "connection lost detected (status=%d after %u checks, was connected for %u seconds, RSSI was %s)",
+                                static_cast<int>(st),
+                                static_cast<unsigned>(sta_link_fail_streak_),
+                                static_cast<unsigned>((now - wifi_connect_start_ms_) / 1000),
+                                rssi_text);
+                    stopMdns();
+                    server_.stop();
+                    wifi_state_ = WIFI_STATE_OFF;
+                    sta_link_fail_streak_ = 0;
+                    wifi_retry_at_ms_ = now + Config::WIFI_CONNECT_RETRY_DELAY_MS;
+                    wifi_retry_count_ = 0;
+                    wifi_ui_dirty_ = true;
+                }
             }
         }
         if (wifi_state_ == WIFI_STATE_STA_CONNECTED) {
@@ -579,9 +597,11 @@ void AuraNetworkManager::startAp() {
         LOGW("WiFi", "failed to start AP: %s", ap_ssid);
         if (WiFi.status() == WL_CONNECTED) {
             wifi_state_ = WIFI_STATE_STA_CONNECTED;
+            sta_link_fail_streak_ = 0;
             server_.begin();
         } else {
             wifi_state_ = WIFI_STATE_OFF;
+            sta_link_fail_streak_ = 0;
             wifi_retry_count_ = 0;
             wifi_retry_at_ms_ = 0;
         }

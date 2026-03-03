@@ -22,3 +22,6 @@ web-installer/
 
 # Local release bundles
 release-assets/
+
+# Generated web assets
+src/web/generated/*.inc
