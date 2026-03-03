@@ -68,6 +68,7 @@ void wifi_state_change_cb(AuraNetworkManager::WifiState,
     }
     state->time_manager->updateWifiState(state->network->isEnabled(), connected);
     state->ui_controller->markDatetimeDirty();
+    state->ui_controller->markWebPagePanelDirty();
     state->ui_controller->mqtt_sync_with_wifi();
 }
 

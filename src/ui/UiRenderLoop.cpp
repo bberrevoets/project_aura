@@ -66,6 +66,13 @@ void UiRenderLoop::process(UiController &owner, uint32_t now_ms) {
         owner.datetime_ui_dirty = false;
         did_update = true;
     }
+    if (owner.web_page_panel_dirty &&
+        owner.current_screen_id == SCREEN_ID_PAGE_SETTINGS &&
+        objects.container_web_page &&
+        !lv_obj_has_flag(objects.container_web_page, LV_OBJ_FLAG_HIDDEN)) {
+        owner.update_web_page_panel();
+        did_update = true;
+    }
     if (owner.backlightManager.isUiDirty() && owner.current_screen_id == SCREEN_ID_PAGE_BACKLIGHT) {
         owner.backlightManager.updateUi();
         did_update = true;

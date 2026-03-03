@@ -348,6 +348,8 @@ void UiController::update_web_page_panel() {
             lv_obj_add_flag(objects.web_page_qr, LV_OBJ_FLAG_HIDDEN);
         }
     }
+
+    web_page_panel_dirty = false;
 }
 
 void UiController::on_web_page_event(lv_event_t *e) {

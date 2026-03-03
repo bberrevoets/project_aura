@@ -286,6 +286,10 @@ void UiController::markDatetimeDirty() {
     datetime_ui_dirty = true;
 }
 
+void UiController::markWebPagePanelDirty() {
+    web_page_panel_dirty = true;
+}
+
 void UiController::mqtt_sync_with_wifi() {
     mqttManager.syncWithWifi();
     // UI state is refreshed in UiRenderLoop under lvgl_port_lock.

@@ -58,6 +58,7 @@ public:
     void onSensorPoll(const SensorManager::PollResult &poll);
     void onTimePoll(const TimeManager::PollResult &poll);
     void markDatetimeDirty();
+    void markWebPagePanelDirty();
     void apply_auto_night_now();
     void mqtt_sync_with_wifi();
     void poll(uint32_t now_ms);
@@ -756,6 +757,7 @@ private:
     int mqtt_icon_state_main = -1;
     bool clock_ui_dirty = true;
     bool datetime_ui_dirty = true;
+    bool web_page_panel_dirty = false;
     bool dac_auto_tab_selected_ = false;
     bool ntp_toggle_syncing = false;
     ConfirmAction confirm_action = CONFIRM_NONE;
