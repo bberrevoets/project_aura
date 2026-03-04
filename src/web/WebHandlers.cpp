@@ -61,8 +61,8 @@ constexpr uint8_t kHttpStreamYieldMs = 1;
 constexpr uint8_t kHttpStreamRetryDelayFastMs = 1;
 constexpr uint8_t kHttpStreamRetryDelayMediumMs = 2;
 constexpr uint8_t kHttpStreamRetryDelaySlowMs = 5;
-constexpr uint32_t kHttpStreamMaxDurationMs = 20000;
-constexpr uint32_t kHttpStreamNoProgressTimeoutMs = 8000;
+constexpr uint32_t kHttpStreamMaxDurationMs = 45000;
+constexpr uint32_t kHttpStreamNoProgressTimeoutMs = 10000;
 constexpr uint32_t kHttpStreamSlowWriteWarnMs = 200;
 constexpr const char kApiErrorOtaBusyJson[] =
     "{\"success\":false,\"error\":\"OTA upload in progress\","
@@ -511,6 +511,37 @@ uint8_t stream_retry_delay_ms(uint16_t zero_writes) {
     return kHttpStreamRetryDelaySlowMs;
 }
 
+bool wait_for_socket_writable(int socket_fd, uint16_t wait_ms, int &last_socket_errno) {
+    if (wait_ms == 0) {
+        return true;
+    }
+
+    fd_set write_fds;
+    FD_ZERO(&write_fds);
+    FD_SET(socket_fd, &write_fds);
+
+    struct timeval timeout = {};
+    timeout.tv_sec = static_cast<long>(wait_ms / 1000U);
+    timeout.tv_usec = static_cast<long>((wait_ms % 1000U) * 1000U);
+
+    errno = 0;
+    const int select_result = ::select(socket_fd + 1, nullptr, &write_fds, nullptr, &timeout);
+    if (select_result > 0) {
+        last_socket_errno = 0;
+        return FD_ISSET(socket_fd, &write_fds) != 0;
+    }
+    if (select_result == 0) {
+        last_socket_errno = EAGAIN;
+        return false;
+    }
+
+    last_socket_errno = errno;
+    if (last_socket_errno == EINTR) {
+        return false;
+    }
+    return false;
+}
+
 bool stream_client_bytes(NetworkClient &client,
                          const uint8_t *data,
                          size_t size,
@@ -626,7 +657,25 @@ bool stream_client_bytes(NetworkClient &client,
             client.stop();
             return false;
         }
-        delay(stream_retry_delay_ms(zero_writes));
+        const uint16_t retry_wait_ms = stream_retry_delay_ms(zero_writes);
+        const bool writable = wait_for_socket_writable(socket_fd, retry_wait_ms, last_socket_errno);
+        if (!writable
+            && last_socket_errno != 0
+            && last_socket_errno != EAGAIN
+#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
+            && last_socket_errno != EWOULDBLOCK
+#endif
+            && last_socket_errno != EINTR) {
+            abort_reason = StreamAbortReason::SocketWriteError;
+            client.stop();
+            return false;
+        }
+        if (!writable && last_socket_errno == EINTR) {
+            last_socket_errno = 0;
+        }
+        if (!writable) {
+            delay(kHttpStreamYieldMs);
+        }
         Watchdog::kick();
     }
     return true;
@@ -1573,8 +1622,12 @@ void dac_handle_root() {
     if (!context || !context->server || !context->fan_control) {
         return;
     }
-    String html = FPSTR(WebTemplates::kDacPageTemplate);
-    send_html_stream(*context->server, html);
+    send_html_stream_progmem(
+        *context->server,
+        WebTemplates::kDacPageTemplateGzip,
+        WebTemplates::kDacPageTemplateGzipSize,
+        true
+    );
 }
 
 void dac_handle_state() {

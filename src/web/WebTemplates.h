@@ -11,6 +11,8 @@ namespace WebTemplates {
 
 extern const uint8_t kDashboardPageTemplateApGzip[] PROGMEM;
 extern const size_t kDashboardPageTemplateApGzipSize;
+extern const uint8_t kDacPageTemplateGzip[] PROGMEM;
+extern const size_t kDacPageTemplateGzipSize;
 
 static const char kWifiListScanning[] PROGMEM = R"HTML(
 <div class="network-item disabled">
@@ -1795,6 +1797,9 @@ static const char kThemeLockedPage[] PROGMEM = R"HTML(
 </html>
 )HTML";
 
+// NOTE: keep this raw HTML block as source for scripts/generate_dac_gzip.py.
+// It is intentionally excluded from compilation to avoid duplicate flash usage.
+#if 0
 static const char kDacPageTemplate[] PROGMEM = R"HTML(
 <!DOCTYPE html>
 <html lang="en">
@@ -2475,6 +2480,7 @@ static const char kDacPageTemplate[] PROGMEM = R"HTML(
 </body>
 </html>
 )HTML";
+#endif
 
 } // namespace WebTemplates
 
