@@ -304,6 +304,18 @@ void UiController::update_web_page_panel() {
     const bool ap_mode = wifi_enabled && wifi_state == AuraNetworkManager::WIFI_STATE_AP_CONFIG;
     const bool sta_mode = wifi_enabled && wifi_state == AuraNetworkManager::WIFI_STATE_STA_CONNECTED;
     const bool off_mode = !ap_mode && !sta_mode;
+    const String local_url = networkManager.localUrl("/dashboard");
+    String ip_url = "http://<device-ip>/dashboard";
+    if (sta_mode) {
+        const IPAddress ip = WiFi.localIP();
+        if (ip[0] != 0 || ip[1] != 0 || ip[2] != 0 || ip[3] != 0) {
+            ip_url = "http://";
+            ip_url += ip.toString();
+            ip_url += "/dashboard";
+        } else {
+            ip_url = local_url;
+        }
+    }
 
     if (objects.container_web_page_text_ap) {
         safe_label_set_text(objects.container_web_page_text_ap, UiText::LabelWebPageHelpAp());
@@ -312,16 +324,6 @@ void UiController::update_web_page_panel() {
 
     if (objects.container_web_page_text_sta) {
         String sta_text = UiText::LabelWebPageHelpSta();
-        const String local_url = networkManager.localUrl("/dashboard");
-        String ip_url = "http://<device-ip>/dashboard";
-        if (sta_mode) {
-            const IPAddress ip = WiFi.localIP();
-            if (ip[0] != 0 || ip[1] != 0 || ip[2] != 0 || ip[3] != 0) {
-                ip_url = "http://";
-                ip_url += ip.toString();
-                ip_url += "/dashboard";
-            }
-        }
         sta_text.replace("{{LOCAL_URL}}", local_url);
         sta_text.replace("{{IP_URL}}", ip_url);
         safe_label_set_text(objects.container_web_page_text_sta, sta_text.c_str());
@@ -338,7 +340,7 @@ void UiController::update_web_page_panel() {
         if (ap_mode) {
             web_url = "http://192.168.4.1/dashboard";
         } else if (sta_mode) {
-            web_url = networkManager.localUrl("/dashboard");
+            web_url = ip_url;
         }
 
         if (!web_url.isEmpty()) {

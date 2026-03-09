@@ -366,11 +366,23 @@ void UiController::update_dac_ui(uint32_t now_ms) {
     const AuraNetworkManager::WifiState wifi_state = networkManager.state();
     const bool ap_mode = wifi_enabled && (wifi_state == AuraNetworkManager::WIFI_STATE_AP_CONFIG);
     const bool wifi_connected = wifi_enabled && (wifi_state == AuraNetworkManager::WIFI_STATE_STA_CONNECTED);
+    const String local_url = networkManager.localUrl("/dac");
+    String ip_url = "http://<device-ip>/dac";
+    if (wifi_connected) {
+        const IPAddress ip = WiFi.localIP();
+        if (ip[0] != 0 || ip[1] != 0 || ip[2] != 0 || ip[3] != 0) {
+            ip_url = "http://";
+            ip_url += ip.toString();
+            ip_url += "/dac";
+        } else {
+            ip_url = local_url;
+        }
+    }
     String dac_url;
     if (ap_mode) {
         dac_url = "http://192.168.4.1/dac";
     } else if (wifi_connected) {
-        dac_url = networkManager.localUrl("/dac");
+        dac_url = ip_url;
     }
     if (objects.label_dac_qr_link) {
         if (!dac_url.isEmpty()) {
@@ -380,17 +392,10 @@ void UiController::update_dac_ui(uint32_t now_ms) {
         }
     }
     if (objects.label_dac_qr_text_ip_link) {
-        String ip_url = "http://<device-ip>/dac";
-        if (wifi_connected) {
-            const IPAddress ip = WiFi.localIP();
-            if (ip[0] != 0 || ip[1] != 0 || ip[2] != 0 || ip[3] != 0) {
-                ip_url = "http://";
-                ip_url += ip.toString();
-                ip_url += "/dac";
-            }
-        }
+        set_visible(objects.label_dac_qr_text_ip_link, wifi_connected);
         String ip_link_text = UiText::LabelDacQrTextIpLink();
         ip_link_text.replace("{{IP_URL}}", ip_url);
+        ip_link_text.replace("{{LOCAL_URL}}", local_url);
         safe_label_set_text(objects.label_dac_qr_text_ip_link, ip_link_text.c_str());
     }
     if (objects.qrcode_dac_portal) {

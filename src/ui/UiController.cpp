@@ -13,6 +13,7 @@
 #include <math.h>
 #include <string.h>
 #include <time.h>
+#include <WiFi.h>
 #include <esp_system.h>
 #include <esp_wifi.h>
 
@@ -1452,7 +1453,18 @@ void UiController::update_settings_header() {
 void UiController::update_theme_custom_info(bool presets) {
     set_visible(objects.container_theme_custom_info, !presets);
     if (!presets && objects.qrcode_theme_custom) {
-        const String theme_url = networkManager.localUrl("/theme");
+        const bool wifi_enabled = networkManager.isEnabled();
+        const AuraNetworkManager::WifiState wifi_state = networkManager.state();
+        const bool sta_mode = wifi_enabled && (wifi_state == AuraNetworkManager::WIFI_STATE_STA_CONNECTED);
+        String theme_url = networkManager.localUrl("/theme");
+        if (sta_mode) {
+            const IPAddress ip = WiFi.localIP();
+            if (ip[0] != 0 || ip[1] != 0 || ip[2] != 0 || ip[3] != 0) {
+                theme_url = "http://";
+                theme_url += ip.toString();
+                theme_url += "/theme";
+            }
+        }
         lv_qrcode_update(objects.qrcode_theme_custom, theme_url.c_str(), theme_url.length());
     }
 }

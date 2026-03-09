@@ -201,6 +201,7 @@ void UiController::update_theme_texts() {
                 ip_url += "/theme";
             }
         }
+        custom_info.replace("{{LOCAL_URL}}", theme_url);
         custom_info.replace(UiText::ThemePortalUrl(), theme_url);
         custom_info.replace("http://aura.local/theme", theme_url);
         custom_info.replace("{{IP_URL}}", ip_url);
