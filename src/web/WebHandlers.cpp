@@ -132,7 +132,12 @@ WebHandlerContext *ctx() {
 void send_no_store_headers(WebServer &server);
 
 bool diag_access_allowed(const WebHandlerContext *context) {
-    return context && context->wifi_is_ap_mode && context->wifi_is_ap_mode();
+    if (!context) {
+        return false;
+    }
+    const bool ap_mode = context->wifi_is_ap_mode && context->wifi_is_ap_mode();
+    const bool sta_connected = context->wifi_is_connected && context->wifi_is_connected();
+    return ap_mode || sta_connected;
 }
 
 void send_ota_busy_json(WebServer &server) {
