@@ -7,6 +7,8 @@ from pathlib import Path
 
 SPLIT_STYLE_RE = re.compile(r"<style>\n?(.*?)\n?</style>", re.DOTALL)
 SPLIT_SCRIPT_RE = re.compile(r"<script>\n?(.*?)\n?</script>", re.DOTALL)
+CSS_PATH_PLACEHOLDER = "__AURA_CSS_ASSET_PATH__"
+JS_PATH_PLACEHOLDER = "__AURA_JS_ASSET_PATH__"
 
 
 @dataclass(frozen=True)
@@ -149,6 +151,14 @@ def split_assets(html: str, css_path: str, js_path: str, shell: ShellConfig, lab
     )
 
     return shell_html, css, js
+
+
+def apply_asset_paths(shell_html: str, css_path: str, js_path: str) -> str:
+    if CSS_PATH_PLACEHOLDER not in shell_html:
+        raise RuntimeError("CSS asset placeholder not found in shell HTML")
+    if JS_PATH_PLACEHOLDER not in shell_html:
+        raise RuntimeError("JS asset placeholder not found in shell HTML")
+    return shell_html.replace(CSS_PATH_PLACEHOLDER, css_path).replace(JS_PATH_PLACEHOLDER, js_path)
 
 
 def gzip_bytes(data: bytes) -> bytes:

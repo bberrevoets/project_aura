@@ -2142,7 +2142,7 @@ static const char kDacPageTemplate[] PROGMEM = R"HTML(
 
       <div class="grid2">
         <div class="card" style="margin:0;padding:10px;background:var(--panel-strong);">
-          <div class="k">DAC Output</div>
+          <div class="k">Fan Output</div>
           <div id="out_val" class="v">UNKNOWN</div>
         </div>
         <div class="card" style="margin:0;padding:10px;background:var(--panel-strong);">

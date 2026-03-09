@@ -1,6 +1,9 @@
 from pathlib import Path
 
 from web_asset_split import (
+    CSS_PATH_PLACEHOLDER,
+    JS_PATH_PLACEHOLDER,
+    apply_asset_paths,
     ShellConfig,
     SplitSymbols,
     extract_template,
@@ -77,13 +80,20 @@ SYMBOLS = SplitSymbols(
 
 def main() -> None:
     html = extract_template(SOURCE_HEADER, START_MARKER, END_MARKER, "Theme")
+    shell_html, css_text, js_text = split_assets(
+        html,
+        CSS_PATH_PLACEHOLDER,
+        JS_PATH_PLACEHOLDER,
+        SHELL,
+        "Theme",
+    )
     version_token = make_version_token(
         get_app_version(env),
-        "theme\n" + html + "\n" + SHELL.shell_boot_html + "\n" + SHELL.shell_critical_css,
+        "theme\n" + shell_html + "\n" + css_text + "\n" + js_text,
     )
     css_path = f"/assets/theme/styles.{version_token}.css"
     js_path = f"/assets/theme/app.{version_token}.js"
-    shell_html, css_text, js_text = split_assets(html, css_path, js_path, SHELL, "Theme")
+    shell_html = apply_asset_paths(shell_html, css_path, js_path)
 
     shell_bytes = shell_html.encode("utf-8")
     css_bytes = css_text.encode("utf-8")

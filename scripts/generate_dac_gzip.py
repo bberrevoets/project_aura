@@ -1,6 +1,9 @@
 from pathlib import Path
 
 from web_asset_split import (
+    CSS_PATH_PLACEHOLDER,
+    JS_PATH_PLACEHOLDER,
+    apply_asset_paths,
     ShellConfig,
     SplitSymbols,
     extract_template,
@@ -23,12 +26,12 @@ END_MARKER = ')HTML";'
 
 SHELL = ShellConfig(
     shell_boot_html="""
-<div id="shellBoot" class="shell-boot" aria-live="polite">
+  <div id="shellBoot" class="shell-boot" aria-live="polite">
   <div class="shell-boot-card">
     <div class="shell-head">
       <div>
         <div class="shell-kicker">Project Aura</div>
-        <div class="shell-title">DAC Control</div>
+        <div class="shell-title">Fan Control</div>
         <div class="shell-sub">Loading fan state and automation controls...</div>
       </div>
       <div class="shell-chip">Live</div>
@@ -83,13 +86,20 @@ SYMBOLS = SplitSymbols(
 
 def main() -> None:
     html = extract_template(SOURCE_HEADER, START_MARKER, END_MARKER, "DAC")
+    shell_html, css_text, js_text = split_assets(
+        html,
+        CSS_PATH_PLACEHOLDER,
+        JS_PATH_PLACEHOLDER,
+        SHELL,
+        "DAC",
+    )
     version_token = make_version_token(
         get_app_version(env),
-        "dac\n" + html + "\n" + SHELL.shell_boot_html + "\n" + SHELL.shell_critical_css,
+        "dac\n" + shell_html + "\n" + css_text + "\n" + js_text,
     )
     css_path = f"/assets/dac/styles.{version_token}.css"
     js_path = f"/assets/dac/app.{version_token}.js"
-    shell_html, css_text, js_text = split_assets(html, css_path, js_path, SHELL, "DAC")
+    shell_html = apply_asset_paths(shell_html, css_path, js_path)
 
     shell_bytes = shell_html.encode("utf-8")
     css_bytes = css_text.encode("utf-8")
