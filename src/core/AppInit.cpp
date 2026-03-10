@@ -172,7 +172,8 @@ esp_panel::board::Board *AppInit::initBoardAndPeripherals(Context &ctx) {
 
     BootHelpers::logGt911Address();
     ctx.sensorManager.begin(ctx.storage, ctx.temp_offset, ctx.hum_offset);
-    ctx.fanControl.begin(ctx.storage.config().dac_auto_mode);
+    ctx.fanControl.begin(ctx.storage.config().dac_auto_mode,
+                         ctx.storage.config().dac_auto_armed);
     String dac_auto_json;
     if (ctx.storage.loadText(StorageManager::kDacAutoPath, dac_auto_json)) {
         DacAutoConfig dac_auto;

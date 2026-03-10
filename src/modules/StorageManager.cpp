@@ -311,6 +311,21 @@ void StorageManager::saveMqttEnabled(bool enabled) {
     }
 }
 
+bool StorageManager::saveDacAutoState(bool auto_mode, bool auto_armed) {
+    const bool prev_mode = config_.dac_auto_mode;
+    const bool prev_armed = config_.dac_auto_armed;
+
+    config_.dac_auto_mode = auto_mode;
+    config_.dac_auto_armed = auto_armed;
+
+    if (!saveConfig(true)) {
+        config_.dac_auto_mode = prev_mode;
+        config_.dac_auto_armed = prev_armed;
+        return false;
+    }
+    return true;
+}
+
 bool StorageManager::loadVocState(uint8_t *out, size_t len) const {
     return loadBlob(kVocStatePath, out, len);
 }
@@ -540,6 +555,7 @@ bool StorageManager::loadConfig() {
     ArduinoJson::JsonObject dac = root["dac"].as<ArduinoJson::JsonObject>();
     if (!dac.isNull()) {
         readValue(dac, "auto_mode", loaded.dac_auto_mode);
+        readValue(dac, "auto_armed", loaded.dac_auto_armed);
     }
 
     ArduinoJson::JsonObject theme = root["theme"].as<ArduinoJson::JsonObject>();
@@ -628,6 +644,7 @@ bool StorageManager::saveConfigInternal() {
 
     ArduinoJson::JsonObject dac = root["dac"].to<ArduinoJson::JsonObject>();
     dac["auto_mode"] = config_.dac_auto_mode;
+    dac["auto_armed"] = config_.dac_auto_armed;
 
     ArduinoJson::JsonObject theme = root["theme"].to<ArduinoJson::JsonObject>();
     theme["valid"] = config_.theme.valid;

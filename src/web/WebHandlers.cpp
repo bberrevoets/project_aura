@@ -201,17 +201,12 @@ void send_ota_busy_json(WebServer &server) {
     server.send(503, "application/json", kApiErrorOtaBusyJson);
 }
 
-bool persist_dac_auto_mode(StorageManager &storage, bool enabled) {
-    const bool previous = storage.config().dac_auto_mode;
-    if (previous == enabled) {
+bool persist_dac_auto_state(StorageManager &storage, bool auto_mode, bool auto_armed) {
+    if (storage.config().dac_auto_mode == auto_mode &&
+        storage.config().dac_auto_armed == auto_armed) {
         return true;
     }
-    storage.config().dac_auto_mode = enabled;
-    if (!storage.saveConfig(true)) {
-        storage.config().dac_auto_mode = previous;
-        return false;
-    }
-    return true;
+    return storage.saveDacAutoState(auto_mode, auto_armed);
 }
 
 bool parse_dac_timer_seconds(const ArduinoJson::JsonVariantConst &value, uint32_t &out_seconds) {
@@ -2101,7 +2096,8 @@ void dac_handle_action() {
             send_dac_action_error(400, "Invalid mode");
             return;
         }
-        if (!persist_dac_auto_mode(*context->storage, auto_mode)) {
+        const bool auto_armed = auto_mode ? context->storage->config().dac_auto_armed : false;
+        if (!persist_dac_auto_state(*context->storage, auto_mode, auto_armed)) {
             send_dac_action_error(500, "Failed to persist DAC mode");
             return;
         }
@@ -2118,9 +2114,14 @@ void dac_handle_action() {
     } else if (action == "start") {
         fan.requestStart();
     } else if (action == "stop") {
+        const bool auto_mode = (fan.mode() == FanControl::Mode::Auto);
+        if (!persist_dac_auto_state(*context->storage, auto_mode, false)) {
+            send_dac_action_error(500, "Failed to persist DAC auto state");
+            return;
+        }
         fan.requestStop();
     } else if (action == "start_auto") {
-        if (!persist_dac_auto_mode(*context->storage, true)) {
+        if (!persist_dac_auto_state(*context->storage, true, true)) {
             send_dac_action_error(500, "Failed to persist DAC auto mode");
             return;
         }
@@ -2179,7 +2180,7 @@ void dac_handle_auto() {
         send_dac_auto_error(500, "Failed to persist auto config");
         return;
     }
-    if (rearm && !persist_dac_auto_mode(*context->storage, true)) {
+    if (rearm && !persist_dac_auto_state(*context->storage, true, true)) {
         send_dac_auto_error(500, "Failed to persist DAC auto mode");
         return;
     }

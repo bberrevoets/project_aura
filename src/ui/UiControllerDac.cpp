@@ -408,6 +408,18 @@ void UiController::update_dac_ui(uint32_t now_ms) {
     }
 }
 
+bool persist_dac_auto_state(StorageManager &storage, bool auto_mode, bool auto_armed) {
+    if (storage.config().dac_auto_mode == auto_mode &&
+        storage.config().dac_auto_armed == auto_armed) {
+        return true;
+    }
+    if (storage.saveDacAutoState(auto_mode, auto_armed)) {
+        return true;
+    }
+    LOGE("UI", "failed to persist DAC auto state");
+    return false;
+}
+
 void UiController::on_dac_settings_event(lv_event_t *e) {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
         return;
@@ -478,6 +490,9 @@ void UiController::on_dac_manual_start_event(lv_event_t *e) {
         return;
     }
     dac_auto_tab_selected_ = false;
+    if (!persist_dac_auto_state(storage, false, false)) {
+        return;
+    }
     if (fanControl.mode() != FanControl::Mode::Manual) {
         fanControl.setMode(FanControl::Mode::Manual);
     }
@@ -489,6 +504,9 @@ void UiController::on_dac_manual_stop_event(lv_event_t *e) {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
         return;
     }
+    if (!persist_dac_auto_state(storage, fanControl.mode() == FanControl::Mode::Auto, false)) {
+        return;
+    }
     fanControl.requestStop();
     update_dac_ui(millis());
 }
@@ -497,14 +515,10 @@ void UiController::on_dac_manual_auto_event(lv_event_t *e) {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
         return;
     }
-    fanControl.requestAutoStart();
-    if (!storage.config().dac_auto_mode) {
-        storage.config().dac_auto_mode = true;
-        if (!storage.saveConfig(true)) {
-            storage.requestSave();
-            LOGE("UI", "failed to persist DAC auto mode");
-        }
+    if (!persist_dac_auto_state(storage, true, true)) {
+        return;
     }
+    fanControl.requestAutoStart();
     update_dac_ui(millis());
 }
 
@@ -512,19 +526,18 @@ void UiController::on_dac_auto_start_event(lv_event_t *e) {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
         return;
     }
-    fanControl.requestAutoStart();
-    if (!storage.config().dac_auto_mode) {
-        storage.config().dac_auto_mode = true;
-        if (!storage.saveConfig(true)) {
-            storage.requestSave();
-            LOGE("UI", "failed to persist DAC auto mode");
-        }
+    if (!persist_dac_auto_state(storage, true, true)) {
+        return;
     }
+    fanControl.requestAutoStart();
     update_dac_ui(millis());
 }
 
 void UiController::on_dac_auto_stop_event(lv_event_t *e) {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
+        return;
+    }
+    if (!persist_dac_auto_state(storage, true, false)) {
         return;
     }
     fanControl.requestStop();

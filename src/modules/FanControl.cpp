@@ -200,7 +200,7 @@ uint32_t FanControl::remainingSeconds(uint32_t now_ms) const {
     return (stop_at_ms - now_ms + 999UL) / 1000UL;
 }
 
-void FanControl::begin(bool auto_mode_preference) {
+void FanControl::begin(bool auto_mode_preference, bool auto_armed_preference) {
     ensureSyncPrimitives();
 
     mode_ = auto_mode_preference ? Mode::Auto : Mode::Manual;
@@ -217,8 +217,18 @@ void FanControl::begin(bool auto_mode_preference) {
     last_health_check_ms_ = 0;
     health_probe_fail_count_ = 0;
     boot_missing_lockout_ = false;
-    // On cold boot always start in STOP state; auto-demand must be explicitly armed by user.
-    auto_resume_blocked_ = (mode_ == Mode::Auto);
+    boot_auto_resume_pending_ = false;
+    boot_auto_resume_due_ms_ = 0;
+    auto_resume_blocked_ = false;
+    if (mode_ == Mode::Auto) {
+        auto_resume_blocked_ = true;
+        if (auto_armed_preference) {
+            boot_auto_resume_pending_ = true;
+            boot_auto_resume_due_ms_ = millis() + Config::DAC_AUTO_BOOT_RESUME_DELAY_MS;
+            LOGI("FanControl", "auto resume scheduled in %lu ms after boot",
+                 static_cast<unsigned long>(Config::DAC_AUTO_BOOT_RESUME_DELAY_MS));
+        }
+    }
     pending_commands_ = PendingCommands{};
     snapshot_ = Snapshot{};
 
@@ -372,6 +382,15 @@ void FanControl::poll(uint32_t now_ms, const SensorData *sensor_data, bool gas_w
         }
     }
 
+    if (boot_auto_resume_pending_ && timeReached(now_ms, boot_auto_resume_due_ms_)) {
+        boot_auto_resume_pending_ = false;
+        boot_auto_resume_due_ms_ = 0;
+        if (mode_ == Mode::Auto) {
+            auto_resume_blocked_ = false;
+            LOGI("FanControl", "auto resume armed after boot delay");
+        }
+    }
+
     if (mode_ == Mode::Auto && available_ && !manual_override_active_ && !auto_resume_blocked_) {
         uint8_t demand_percent = 0;
         if (auto_config_.enabled && sensor_data != nullptr) {
@@ -508,11 +527,18 @@ void FanControl::applyMode(Mode mode) {
     if (mode == Mode::Auto && mode_ != Mode::Auto) {
         // Selecting AUTO only switches mode/UI; START AUTO is the explicit re-arm action.
         auto_resume_blocked_ = true;
+        boot_auto_resume_pending_ = false;
+        boot_auto_resume_due_ms_ = 0;
     }
     if (mode_ == mode) {
         return;
     }
     mode_ = mode;
+    if (mode_ == Mode::Manual) {
+        auto_resume_blocked_ = false;
+        boot_auto_resume_pending_ = false;
+        boot_auto_resume_due_ms_ = 0;
+    }
     if (mode_ == Mode::Auto && !manual_override_active_) {
         manual_step_update_pending_ = false;
         timer_update_pending_ = false;
@@ -546,6 +572,8 @@ void FanControl::applyRequestStart() {
 void FanControl::applyRequestStop() {
     start_requested_ = false;
     stop_requested_ = true;
+    boot_auto_resume_pending_ = false;
+    boot_auto_resume_due_ms_ = 0;
 }
 
 void FanControl::applyRequestAutoStart() {
@@ -557,6 +585,8 @@ void FanControl::applyRequestAutoStart() {
     manual_step_update_pending_ = false;
     timer_update_pending_ = false;
     auto_resume_blocked_ = false;
+    boot_auto_resume_pending_ = false;
+    boot_auto_resume_due_ms_ = 0;
 }
 
 void FanControl::applyAutoConfig(const DacAutoConfig &config) {

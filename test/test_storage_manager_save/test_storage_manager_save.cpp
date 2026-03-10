@@ -66,11 +66,38 @@ void test_save_mqtt_settings_rolls_back_on_failure() {
     TEST_ASSERT_TRUE(storage.config().mqtt_anonymous);
 }
 
+void test_save_dac_auto_state_persists_mode_and_armed() {
+    StorageManager storage;
+    storage.begin();
+
+    TEST_ASSERT_TRUE(storage.saveDacAutoState(true, true));
+    TEST_ASSERT_TRUE(storage.config().dac_auto_mode);
+    TEST_ASSERT_TRUE(storage.config().dac_auto_armed);
+
+    TEST_ASSERT_TRUE(storage.saveDacAutoState(true, false));
+    TEST_ASSERT_TRUE(storage.config().dac_auto_mode);
+    TEST_ASSERT_FALSE(storage.config().dac_auto_armed);
+}
+
+void test_save_dac_auto_state_rolls_back_on_failure() {
+    StorageManager storage;
+    storage.begin();
+    TEST_ASSERT_TRUE(storage.saveDacAutoState(true, true));
+
+    StorageManager::setTestForceSaveFailure(true);
+    TEST_ASSERT_FALSE(storage.saveDacAutoState(false, false));
+
+    TEST_ASSERT_TRUE(storage.config().dac_auto_mode);
+    TEST_ASSERT_TRUE(storage.config().dac_auto_armed);
+}
+
 int main(int, char **) {
     UNITY_BEGIN();
     RUN_TEST(test_save_wifi_settings_preserves_spaces);
     RUN_TEST(test_save_wifi_settings_rolls_back_on_failure);
     RUN_TEST(test_save_mqtt_settings_preserves_spaces);
     RUN_TEST(test_save_mqtt_settings_rolls_back_on_failure);
+    RUN_TEST(test_save_dac_auto_state_persists_mode_and_armed);
+    RUN_TEST(test_save_dac_auto_state_rolls_back_on_failure);
     return UNITY_END();
 }

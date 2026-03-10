@@ -22,7 +22,7 @@ public:
         Auto = 1,
     };
 
-    void begin(bool auto_mode_preference);
+    void begin(bool auto_mode_preference, bool auto_armed_preference);
     void poll(uint32_t now_ms, const SensorData *sensor_data, bool gas_warmup);
 
     void setMode(Mode mode);
@@ -123,6 +123,8 @@ private:
     uint8_t health_probe_fail_count_ = 0;
     bool boot_missing_lockout_ = false;
     bool auto_resume_blocked_ = false;
+    bool boot_auto_resume_pending_ = false;
+    uint32_t boot_auto_resume_due_ms_ = 0;
 
     mutable SemaphoreHandle_t sync_mutex_ = nullptr;
     PendingCommands pending_commands_{};

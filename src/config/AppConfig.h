@@ -144,6 +144,7 @@ namespace Config {
     constexpr uint16_t DAC_VOUT_FULL_SCALE_MV = 10000;
     constexpr uint16_t DAC_SAFE_DEFAULT_MV = 0;
     constexpr uint16_t DAC_SAFE_ERROR_MV = 0;
+    constexpr uint32_t DAC_AUTO_BOOT_RESUME_DELAY_MS = 15000UL;
     constexpr uint32_t DAC_TIMER_NONE_S = 0U;
     constexpr uint32_t DAC_TIMER_PRESETS_S[] = {600U, 1800U, 3600U, 7200U, 14400U, 28800U};
     constexpr size_t DAC_TIMER_PRESETS_COUNT =
@@ -388,6 +389,7 @@ namespace Config {
         bool ntp_enabled = true;
         int tz_index = -1;
         bool dac_auto_mode = false;
+        bool dac_auto_armed = false;
 
         ThemeConfig theme{};
     };
