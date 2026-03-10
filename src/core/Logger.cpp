@@ -12,6 +12,63 @@
 namespace {
 constexpr size_t kLogBufferSize = 256;
 constexpr uint32_t kRecentDedupWindowMs = 30000;
+
+void storeRecentInBuffer(Logger::RecentEntry *buffer,
+                         size_t capacity,
+                         size_t &head,
+                         size_t &count,
+                         Logger::Level level,
+                         const char *tag,
+                         const char *message,
+                         uint32_t now_ms) {
+    if (!buffer || capacity == 0) {
+        return;
+    }
+
+    if (count > 0) {
+        const size_t last_index = (head + capacity - 1) % capacity;
+        const Logger::RecentEntry &last = buffer[last_index];
+        const bool same_event =
+            last.level == level &&
+            strcmp(last.tag, tag) == 0 &&
+            strcmp(last.message, message) == 0;
+        const bool within_dedup_window = (now_ms - last.ms) <= kRecentDedupWindowMs;
+        if (same_event && within_dedup_window) {
+            return;
+        }
+    }
+
+    Logger::RecentEntry &entry = buffer[head];
+    entry.ms = now_ms;
+    entry.level = level;
+    strncpy(entry.tag, tag, sizeof(entry.tag) - 1);
+    entry.tag[sizeof(entry.tag) - 1] = '\0';
+    strncpy(entry.message, message, sizeof(entry.message) - 1);
+    entry.message[sizeof(entry.message) - 1] = '\0';
+
+    head = (head + 1) % capacity;
+    if (count < capacity) {
+        count++;
+    }
+}
+
+size_t copyRecentFromBuffer(const Logger::RecentEntry *buffer,
+                            size_t capacity,
+                            size_t head,
+                            size_t count,
+                            Logger::RecentEntry *out,
+                            size_t max_entries) {
+    if (!buffer || !out || max_entries == 0 || count == 0 || capacity == 0) {
+        return 0;
+    }
+
+    const size_t to_copy = (count < max_entries) ? count : max_entries;
+    const size_t start = (head + capacity - to_copy) % capacity;
+    for (size_t i = 0; i < to_copy; ++i) {
+        out[i] = buffer[(start + i) % capacity];
+    }
+    return to_copy;
+}
 }
 
 HardwareSerial *Logger::serial_ = &Serial;
@@ -21,6 +78,9 @@ bool Logger::sensors_serial_output_enabled_ = true;
 Logger::RecentEntry Logger::recent_[Logger::kRecentCapacity];
 size_t Logger::recent_head_ = 0;
 size_t Logger::recent_count_ = 0;
+Logger::RecentEntry Logger::recent_alerts_[Logger::kRecentAlertCapacity];
+size_t Logger::recent_alert_head_ = 0;
+size_t Logger::recent_alert_count_ = 0;
 
 void Logger::begin(HardwareSerial &serial, Level level) {
     serial_ = &serial;
@@ -122,42 +182,31 @@ void Logger::storeRecent(Level level, const char *tag, const char *message) {
         message_buf[sizeof(message_buf) - 1] = '\0';
     }
 
-    if (recent_count_ > 0) {
-        const size_t last_index = (recent_head_ + kRecentCapacity - 1) % kRecentCapacity;
-        const RecentEntry &last = recent_[last_index];
-        const bool same_event =
-            last.level == level &&
-            strcmp(last.tag, tag_buf) == 0 &&
-            strcmp(last.message, message_buf) == 0;
-        const bool within_dedup_window = (now_ms - last.ms) <= kRecentDedupWindowMs;
-        if (same_event && within_dedup_window) {
-            return;
-        }
-    }
+    storeRecentInBuffer(recent_, kRecentCapacity, recent_head_, recent_count_,
+                        level, tag_buf, message_buf, now_ms);
 
-    RecentEntry &entry = recent_[recent_head_];
-    entry.ms = now_ms;
-    entry.level = level;
-    strncpy(entry.tag, tag_buf, sizeof(entry.tag) - 1);
-    entry.tag[sizeof(entry.tag) - 1] = '\0';
-    strncpy(entry.message, message_buf, sizeof(entry.message) - 1);
-    entry.message[sizeof(entry.message) - 1] = '\0';
-
-    recent_head_ = (recent_head_ + 1) % kRecentCapacity;
-    if (recent_count_ < kRecentCapacity) {
-        recent_count_++;
+    if (level == Error || level == Warn) {
+        storeRecentInBuffer(recent_alerts_, kRecentAlertCapacity, recent_alert_head_, recent_alert_count_,
+                            level, tag_buf, message_buf, now_ms);
     }
 }
 
 size_t Logger::copyRecent(RecentEntry *out, size_t max_entries) {
-    if (!out || max_entries == 0 || recent_count_ == 0) {
-        return 0;
-    }
-
-    const size_t to_copy = (recent_count_ < max_entries) ? recent_count_ : max_entries;
-    const size_t start = (recent_head_ + kRecentCapacity - to_copy) % kRecentCapacity;
-    for (size_t i = 0; i < to_copy; ++i) {
-        out[i] = recent_[(start + i) % kRecentCapacity];
-    }
-    return to_copy;
+    return copyRecentFromBuffer(recent_, kRecentCapacity, recent_head_, recent_count_, out, max_entries);
 }
+
+size_t Logger::copyRecentAlerts(RecentEntry *out, size_t max_entries) {
+    return copyRecentFromBuffer(recent_alerts_, kRecentAlertCapacity,
+                                recent_alert_head_, recent_alert_count_, out, max_entries);
+}
+
+#ifdef UNIT_TEST
+void Logger::resetRecentForTest() {
+    memset(recent_, 0, sizeof(recent_));
+    memset(recent_alerts_, 0, sizeof(recent_alerts_));
+    recent_head_ = 0;
+    recent_count_ = 0;
+    recent_alert_head_ = 0;
+    recent_alert_count_ = 0;
+}
+#endif

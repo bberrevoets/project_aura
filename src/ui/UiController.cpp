@@ -883,7 +883,7 @@ void UiController::update_diag_log_ui() {
 
     lv_label_set_long_mode(objects.system_logs, LV_LABEL_LONG_CLIP);
 
-    const size_t count = Logger::copyRecent(g_diag_log_snapshot, UI_DIAG_LOG_RECENT_MAX);
+    const size_t count = Logger::copyRecentAlerts(g_diag_log_snapshot, UI_DIAG_LOG_RECENT_MAX);
 
     char text[UI_DIAG_LOG_TEXT_CAPACITY];
     text[0] = '\0';

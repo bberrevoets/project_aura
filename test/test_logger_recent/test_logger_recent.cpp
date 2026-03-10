@@ -1,0 +1,64 @@
+#include <unity.h>
+
+#include "ArduinoMock.h"
+#include "core/Logger.h"
+
+void setUp() {
+    setMillis(0);
+    Logger::begin(Serial, Logger::Debug);
+    Logger::setSerialOutputEnabled(false);
+    Logger::setSensorsSerialOutputEnabled(true);
+    Logger::resetRecentForTest();
+}
+
+void tearDown() {
+    Logger::resetRecentForTest();
+}
+
+void test_alert_buffer_keeps_only_warn_and_error() {
+    Logger::log(Logger::Info, "WiFi", "connected");
+    advanceMillis(1);
+    Logger::log(Logger::Warn, "MQTT", "publish delayed");
+    advanceMillis(1);
+    Logger::log(Logger::Error, "OTA", "write failed");
+
+    Logger::RecentEntry recent[4];
+    Logger::RecentEntry alerts[4];
+
+    const size_t recent_count = Logger::copyRecent(recent, 4);
+    const size_t alert_count = Logger::copyRecentAlerts(alerts, 4);
+
+    TEST_ASSERT_EQUAL_UINT32(3, recent_count);
+    TEST_ASSERT_EQUAL_UINT32(2, alert_count);
+
+    TEST_ASSERT_EQUAL(Logger::Warn, alerts[0].level);
+    TEST_ASSERT_EQUAL_STRING("MQTT", alerts[0].tag);
+    TEST_ASSERT_EQUAL_STRING("publish delayed", alerts[0].message);
+
+    TEST_ASSERT_EQUAL(Logger::Error, alerts[1].level);
+    TEST_ASSERT_EQUAL_STRING("OTA", alerts[1].tag);
+    TEST_ASSERT_EQUAL_STRING("write failed", alerts[1].message);
+}
+
+void test_alert_buffer_survives_info_churn() {
+    Logger::log(Logger::Warn, "WiFi", "link unstable");
+    for (unsigned i = 0; i < 80; ++i) {
+        advanceMillis(1);
+        Logger::log(Logger::Info, "Sensors", "sample %u", i);
+    }
+
+    Logger::RecentEntry alerts[4];
+    const size_t alert_count = Logger::copyRecentAlerts(alerts, 4);
+
+    TEST_ASSERT_EQUAL_UINT32(1, alert_count);
+    TEST_ASSERT_EQUAL(Logger::Warn, alerts[0].level);
+    TEST_ASSERT_EQUAL_STRING("WiFi", alerts[0].tag);
+    TEST_ASSERT_EQUAL_STRING("link unstable", alerts[0].message);
+}
+
+int main(int, char **) {
+    UNITY_BEGIN();
+    RUN_TEST(test_alert_buffer_keeps_only_warn_and_error);
+    RUN_TEST(test_alert_buffer_survives_info_churn);
+    return UNITY_END();
+}

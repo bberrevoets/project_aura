@@ -35,6 +35,11 @@ public:
     static bool sensorsSerialOutputEnabled();
     static void log(Level level, const char *tag, const char *fmt, ...);
     static size_t copyRecent(RecentEntry *out, size_t max_entries);
+    static size_t copyRecentAlerts(RecentEntry *out, size_t max_entries);
+
+#ifdef UNIT_TEST
+    static void resetRecentForTest();
+#endif
 
 private:
     static const char *levelName(Level level);
@@ -46,9 +51,13 @@ private:
     static bool serial_output_enabled_;
     static bool sensors_serial_output_enabled_;
     static constexpr size_t kRecentCapacity = 64;
+    static constexpr size_t kRecentAlertCapacity = 32;
     static RecentEntry recent_[kRecentCapacity];
     static size_t recent_head_;
     static size_t recent_count_;
+    static RecentEntry recent_alerts_[kRecentAlertCapacity];
+    static size_t recent_alert_head_;
+    static size_t recent_alert_count_;
 };
 
 #define LOGE(tag, fmt, ...) Logger::log(Logger::Error, tag, fmt, ##__VA_ARGS__)

@@ -1456,7 +1456,7 @@ void diag_handle_data() {
         network["rssi"] = nullptr;
     }
 
-    size_t event_count = Logger::copyRecent(g_events_snapshot, kEventsApiMaxEntries);
+    size_t event_count = Logger::copyRecentAlerts(g_events_snapshot, kEventsApiMaxEntries);
     ArduinoJson::JsonArray last_errors = doc["last_errors"].to<ArduinoJson::JsonArray>();
     size_t added = 0;
     for (size_t i = 0; i < event_count && added < kDiagMaxErrorItems; ++i) {
