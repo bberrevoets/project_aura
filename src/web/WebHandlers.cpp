@@ -49,6 +49,7 @@ constexpr uint32_t kDeferredActionDelayMs = 200;
 constexpr uint32_t kDeferredRestartDelayMs = 1500;
 constexpr uint32_t kTaskWdtDefaultMs = 180000;
 constexpr uint32_t kTaskWdtOtaMs = 10UL * 60UL * 1000UL;
+constexpr uint32_t kWebStreamMqttServiceIntervalMs = 250;
 bool g_deferred_wifi_start_sta = false;
 bool g_deferred_mqtt_sync = false;
 OtaDeferredRestart::Controller g_restart_controller;
@@ -542,32 +543,73 @@ struct WebStreamStats {
 
 WebStreamStats g_web_stream_stats;
 constexpr uint32_t kWebTransferMqttPauseMs = 2000;
+constexpr uint32_t kWebShellMqttPriorityMs = 15000;
+constexpr uint32_t kWebRecentStaConnectPriorityMs = 45000;
 uint16_t g_web_transfer_active_count = 0;
 uint32_t g_web_transfer_pause_until_ms = 0;
+uint32_t g_web_shell_priority_until_ms = 0;
+
+uint32_t deadline_remaining_ms(uint32_t deadline_ms) {
+    if (deadline_ms == 0) {
+        return 0;
+    }
+    const uint32_t now_ms = millis();
+    if (deadline_reached(now_ms, deadline_ms)) {
+        return 0;
+    }
+    return deadline_ms - now_ms;
+}
+
+void note_web_shell_priority() {
+    const uint32_t now_ms = millis();
+    uint32_t priority_until_ms = now_ms + kWebShellMqttPriorityMs;
+    if (g_ctx && g_ctx->wifi_sta_connected_elapsed_ms) {
+        const uint32_t sta_connected_elapsed_ms = g_ctx->wifi_sta_connected_elapsed_ms();
+        if (sta_connected_elapsed_ms > 0 && sta_connected_elapsed_ms < kWebRecentStaConnectPriorityMs) {
+            const uint32_t sta_priority_until_ms =
+                now_ms + (kWebRecentStaConnectPriorityMs - sta_connected_elapsed_ms);
+            if (deadline_remaining_ms(sta_priority_until_ms) > deadline_remaining_ms(priority_until_ms)) {
+                priority_until_ms = sta_priority_until_ms;
+            }
+        }
+    }
+    if (deadline_remaining_ms(priority_until_ms) > deadline_remaining_ms(g_web_shell_priority_until_ms)) {
+        g_web_shell_priority_until_ms = priority_until_ms;
+    }
+}
 
 bool should_pause_mqtt_for_web_transfer() {
     if (g_web_transfer_active_count > 0) {
         return true;
     }
-    if (g_web_transfer_pause_until_ms == 0) {
-        return false;
-    }
-    return !deadline_reached(millis(), g_web_transfer_pause_until_ms);
+    return deadline_remaining_ms(g_web_transfer_pause_until_ms) > 0 ||
+           deadline_remaining_ms(g_web_shell_priority_until_ms) > 0;
 }
 
 uint32_t web_transfer_pause_remaining_ms() {
-    if (g_web_transfer_pause_until_ms == 0) {
-        return 0;
-    }
-    const uint32_t now_ms = millis();
-    if (deadline_reached(now_ms, g_web_transfer_pause_until_ms)) {
-        return 0;
-    }
-    return g_web_transfer_pause_until_ms - now_ms;
+    const uint32_t transfer_remaining = deadline_remaining_ms(g_web_transfer_pause_until_ms);
+    const uint32_t shell_remaining = deadline_remaining_ms(g_web_shell_priority_until_ms);
+    return transfer_remaining > shell_remaining ? transfer_remaining : shell_remaining;
 }
 
 void note_web_transfer_activity() {
     g_web_transfer_pause_until_ms = millis() + kWebTransferMqttPauseMs;
+}
+
+void configure_http_stream_client(NetworkClient &client) {
+    client.setNoDelay(true);
+}
+
+void maybe_service_connected_mqtt_during_web_stream(uint32_t now_ms, uint32_t &last_service_ms) {
+    if (!g_ctx || !g_ctx->mqtt_manager) {
+        return;
+    }
+    if (last_service_ms != 0 &&
+        static_cast<uint32_t>(now_ms - last_service_ms) < kWebStreamMqttServiceIntervalMs) {
+        return;
+    }
+    g_ctx->mqtt_manager->serviceConnectedLoop();
+    last_service_ms = now_ms;
 }
 
 struct WebTransferGuard {
@@ -777,6 +819,7 @@ bool stream_client_bytes(NetworkClient &client,
     uint16_t zero_writes = 0;
     const uint32_t start_ms = millis();
     uint32_t last_progress_ms = start_ms;
+    uint32_t last_mqtt_service_ms = start_ms;
     while (sent < size) {
         Watchdog::kick();
 
@@ -800,6 +843,7 @@ bool stream_client_bytes(NetworkClient &client,
         }
 
         const uint32_t now_ms = millis();
+        maybe_service_connected_mqtt_during_web_stream(now_ms, last_mqtt_service_ms);
         if (written > 0) {
             sent += static_cast<size_t>(written);
             zero_writes = 0;
@@ -894,6 +938,7 @@ bool stream_client_bytes(NetworkClient &client,
 bool send_html_stream(WebServer &server, const String &html) {
     const size_t body_size = html.length();
     const StreamProfile &profile = kHtmlStreamProfile;
+    configure_http_stream_client(server.client());
     send_no_store_headers(server);
     server.setContentLength(body_size);
     server.send(200, "text/html; charset=utf-8", "");
@@ -938,9 +983,11 @@ bool send_html_stream(WebServer &server, const String &html) {
 
 bool send_html_stream_resilient(WebServer &server, const String &html) {
     const size_t body_size = html.length();
+    note_web_shell_priority();
     WebTransferGuard transfer_guard(true);
     WifiPowerSaveGuard wifi_ps_guard;
     wifi_ps_guard.suspend();
+    configure_http_stream_client(server.client());
     send_no_store_headers(server);
     server.setContentLength(body_size);
     server.send(200, "text/html; charset=utf-8", "");
@@ -998,6 +1045,11 @@ bool send_progmem_asset(WebServer &server,
     if (profile.disable_wifi_power_save) {
         wifi_ps_guard.suspend();
     }
+    const bool low_latency_html =
+        strcmp(content_type, "text/html; charset=utf-8") == 0 || profile_override != nullptr;
+    if (low_latency_html) {
+        configure_http_stream_client(server.client());
+    }
     apply_asset_cache_headers(server, cache_mode);
     server.setContentLength(content_size);
     if (gzip_encoded) {
@@ -1042,6 +1094,7 @@ bool send_progmem_asset(WebServer &server,
 }
 
 bool send_html_stream_progmem(WebServer &server, const uint8_t *content, size_t content_size, bool gzip_encoded) {
+    note_web_shell_priority();
     return send_progmem_asset(server,
                               "text/html; charset=utf-8",
                               content,

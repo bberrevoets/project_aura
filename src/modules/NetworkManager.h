@@ -61,6 +61,12 @@ public:
     bool isEnabledDirty() const { return wifi_enabled_dirty_; }
     WifiState state() const { return wifi_state_; }
     bool isConnected() const { return wifi_state_ == WIFI_STATE_STA_CONNECTED; }
+    uint32_t staConnectedElapsedMs() const {
+        if (wifi_state_ != WIFI_STATE_STA_CONNECTED || wifi_connected_since_ms_ == 0) {
+            return 0;
+        }
+        return millis() - wifi_connected_since_ms_;
+    }
     bool isUiDirty() const { return wifi_ui_dirty_; }
     void clearUiDirty() { wifi_ui_dirty_ = false; }
     void markUiDirty() { wifi_ui_dirty_ = true; }
@@ -90,6 +96,7 @@ private:
     WifiState wifi_state_ = WIFI_STATE_OFF;
     WifiState wifi_state_last_ = WIFI_STATE_OFF;
     uint32_t wifi_connect_start_ms_ = 0;
+    uint32_t wifi_connected_since_ms_ = 0;
     uint8_t sta_link_fail_streak_ = 0;
     String wifi_ssid_;
     String wifi_pass_;

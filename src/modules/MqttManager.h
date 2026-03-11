@@ -37,6 +37,7 @@ public:
     void requestPublish();
     void setUserEnabled(bool enabled);
     void updateNightModeAvailability(bool auto_night_enabled);
+    void serviceConnectedLoop();
 
     bool isUserEnabled() const { return mqtt_user_enabled_; }
     bool isEnabled() const { return mqtt_enabled_; }

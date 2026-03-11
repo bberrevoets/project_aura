@@ -71,6 +71,10 @@ bool network_wifi_is_connected() {
     return g_network && g_network->isConnected();
 }
 
+uint32_t network_wifi_sta_connected_elapsed_ms() {
+    return g_network ? g_network->staConnectedElapsedMs() : 0;
+}
+
 bool network_wifi_is_ap_mode() {
     return g_network && g_network->state() == AuraNetworkManager::WIFI_STATE_AP_CONFIG;
 }
@@ -104,6 +108,7 @@ void AuraNetworkManager::begin(StorageManager &storage) {
     web_ctx_.wifi_scan_in_progress = &wifi_scan_in_progress_;
     web_ctx_.wifi_scan_options = &wifi_scan_options_;
     web_ctx_.wifi_is_connected = network_wifi_is_connected;
+    web_ctx_.wifi_sta_connected_elapsed_ms = network_wifi_sta_connected_elapsed_ms;
     web_ctx_.wifi_is_ap_mode = network_wifi_is_ap_mode;
     web_ctx_.wifi_start_scan = network_wifi_start_scan;
     web_ctx_.wifi_stop_scan = network_wifi_stop_scan;
@@ -129,6 +134,7 @@ void AuraNetworkManager::begin(StorageManager &storage) {
             wifi_retry_count_ = 0;
             wifi_retry_at_ms_ = millis() + kInitialWifiConnectDelayMs;
             wifi_connect_start_ms_ = 0;
+            wifi_connected_since_ms_ = 0;
             wifi_ui_dirty_ = true;
             Logger::log(Logger::Info, "WiFi",
                         "delaying initial connect %u ms",
@@ -294,6 +300,7 @@ bool AuraNetworkManager::setEnabled(bool enabled) {
         wifi_retry_count_ = 0;
         wifi_retry_at_ms_ = 0;
         wifi_connect_start_ms_ = 0;
+        wifi_connected_since_ms_ = 0;
     }
     return true;
 }
@@ -323,6 +330,7 @@ bool AuraNetworkManager::applyEnabledIfDirty() {
         wifi_retry_count_ = 0;
         wifi_retry_at_ms_ = 0;
         wifi_connect_start_ms_ = 0;
+        wifi_connected_since_ms_ = 0;
     }
     return true;
 }
@@ -336,6 +344,7 @@ void AuraNetworkManager::clearCredentials() {
     wifi_retry_count_ = 0;
     wifi_retry_at_ms_ = 0;
     wifi_connect_start_ms_ = 0;
+    wifi_connected_since_ms_ = 0;
     wifi_scan_options_.clear();
     wifi_scan_in_progress_ = false;
     stopMdns();
@@ -419,6 +428,7 @@ void AuraNetworkManager::poll() {
             sta_link_fail_streak_ = 0;
             wifi_retry_count_ = 0;
             wifi_retry_at_ms_ = 0;
+            wifi_connected_since_ms_ = millis();
             wifi_ui_dirty_ = true;
             startMdns();
             server_.begin();
@@ -516,11 +526,12 @@ void AuraNetworkManager::poll() {
                                     "connection lost detected (status=%d after %u checks, was connected for %u seconds, RSSI was %s)",
                                     static_cast<int>(st),
                                     static_cast<unsigned>(sta_link_fail_streak_),
-                                    static_cast<unsigned>((now - wifi_connect_start_ms_) / 1000),
+                                    static_cast<unsigned>(wifi_connected_since_ms_ == 0 ? 0 : (now - wifi_connected_since_ms_) / 1000),
                                     rssi_text);
                         stopMdns();
                         server_.stop();
                         wifi_state_ = WIFI_STATE_OFF;
+                        wifi_connected_since_ms_ = 0;
                         sta_link_fail_streak_ = 0;
                         wifi_retry_at_ms_ = now + Config::WIFI_CONNECT_RETRY_DELAY_MS;
                         wifi_retry_count_ = 0;
@@ -602,6 +613,7 @@ void AuraNetworkManager::startSta() {
     WiFi.begin(wifi_ssid_.c_str(), wifi_pass_.c_str());
     wifi_state_ = WIFI_STATE_STA_CONNECTING;
     wifi_connect_start_ms_ = millis();
+    wifi_connected_since_ms_ = 0;
     wifi_ui_dirty_ = true;
     String safe_ssid = wifi_label_safe(wifi_ssid_);
     Logger::log(Logger::Info, "WiFi",

@@ -33,6 +33,7 @@ struct WebHandlerContext {
     bool *wifi_scan_in_progress = nullptr;
     String *wifi_scan_options = nullptr;
     bool (*wifi_is_connected)() = nullptr;
+    uint32_t (*wifi_sta_connected_elapsed_ms)() = nullptr;
     bool (*wifi_is_ap_mode)() = nullptr;
     void (*wifi_start_scan)() = nullptr;
     void (*wifi_stop_scan)() = nullptr;

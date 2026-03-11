@@ -646,9 +646,7 @@ bool MqttManager::connectClient(const SensorData &data, bool night_mode, bool al
     client_.subscribe(subscribe_topic);
     client_.publish(will_topic, Config::MQTT_AVAIL_ONLINE, true);
     publishNightModeAvailability();
-    mqtt_discovery_sent_ = false;
-    publishDiscovery();
-    publishState(data, night_mode, alert_blink, backlight_on);
+    mqtt_publish_requested_ = true;
     return true;
 }
 
@@ -791,10 +789,11 @@ void MqttManager::poll(const SensorData &data, bool night_mode, bool alert_blink
         }
         return;
     }
-    mqtt_connect_deferred_by_web_ = false;
-    publishDiscovery();
     uint32_t now = millis();
-    if (mqtt_publish_requested_ || (now - mqtt_last_publish_ms_ >= Config::MQTT_PUBLISH_MS)) {
+    const bool publish_due =
+        mqtt_publish_requested_ || (now - mqtt_last_publish_ms_ >= Config::MQTT_PUBLISH_MS);
+    const bool discovery_due = mqtt_discovery_ && !mqtt_discovery_sent_;
+    if (discovery_due || publish_due) {
         if (WebHandlersShouldPauseMqttPublish()) {
             if (!mqtt_publish_deferred_by_web_) {
                 WebHandlersNoteMqttPublishDeferred();
@@ -803,11 +802,18 @@ void MqttManager::poll(const SensorData &data, bool night_mode, bool alert_blink
             return;
         }
         mqtt_publish_deferred_by_web_ = false;
+        if (discovery_due) {
+            publishDiscovery();
+        }
+    } else {
+        mqtt_publish_deferred_by_web_ = false;
+    }
+    mqtt_connect_deferred_by_web_ = false;
+    if (publish_due) {
         mqtt_publish_requested_ = false;
         publishState(data, night_mode, alert_blink, backlight_on);
         return;
     }
-    mqtt_publish_deferred_by_web_ = false;
 }
 
 void MqttManager::syncWithWifi() {
@@ -839,11 +845,24 @@ void MqttManager::syncWithWifi() {
     ui_dirty_ = true;
 }
 
+void MqttManager::serviceConnectedLoop() {
+    if (!mqtt_enabled_ || !client_.connected()) {
+        return;
+    }
+    client_.loop();
+    const bool connected = client_.connected();
+    if (connected != mqtt_connected_last_) {
+        mqtt_connected_last_ = connected;
+        ui_dirty_ = true;
+    }
+}
+
 void MqttManager::requestReconnect() {
     LOGI("MQTT", "manual reconnect requested");
     mqtt_connect_attempts_ = 0;
     mqtt_connect_deferred_by_web_ = false;
     mqtt_publish_deferred_by_web_ = false;
+    mqtt_discovery_sent_ = false;
     mqtt_last_attempt_ms_ = 0;
     mqtt_mdns_cache_valid_ = false;
     if (client_.connected()) {
@@ -863,6 +882,7 @@ void MqttManager::setUserEnabled(bool enabled) {
     mqtt_user_enabled_ = enabled;
     mqtt_connect_deferred_by_web_ = false;
     mqtt_publish_deferred_by_web_ = false;
+    mqtt_discovery_sent_ = false;
     mqtt_connect_attempts_ = 0;
     if (storage_) {
         storage_->saveMqttEnabled(mqtt_user_enabled_);
