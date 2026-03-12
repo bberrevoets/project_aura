@@ -8,6 +8,7 @@
 #include "modules/PressureHistory.h"
 #include "modules/SensorManager.h"
 #include "modules/StorageManager.h"
+#include "drivers/Bmp3xx.h"
 #include "drivers/Bmp580.h"
 #include "drivers/Dps310.h"
 #include "drivers/Sen0466.h"
@@ -15,6 +16,8 @@
 #include "drivers/Sfa3x.h"
 
 static void resetDriverStates() {
+    Bmp3xx::state() = Bmp3xxTestState();
+    Bmp3xx::variant_state() = Bmp3xx::Variant::BMP390;
     Bmp580::state() = Bmp580TestState();
     Bmp580::variant_state() = Bmp580::Variant::BMP580_581;
     Sen66::state() = Sen66TestState();
@@ -61,6 +64,8 @@ void test_sensor_manager_poll_updates_data() {
 
     auto &bmp = Bmp580::state();
     bmp.start_ok = false;
+    auto &bmp3 = Bmp3xx::state();
+    bmp3.start_ok = false;
     manager.begin(storage, 0.0f, 0.0f);
 
     auto &sen = Sen66::state();
@@ -301,6 +306,34 @@ void test_sensor_manager_bmp58x_label_reports_bmp585() {
     TEST_ASSERT_EQUAL_STRING("BMP585:", manager.pressureSensorLabel());
 }
 
+void test_sensor_manager_bmp3xx_label_reports_bmp388() {
+    StorageManager storage;
+    storage.begin();
+    SensorManager manager;
+
+    Bmp580::state().start_ok = false;
+    Bmp3xx::variant_state() = Bmp3xx::Variant::BMP388;
+
+    manager.begin(storage, 0.0f, 0.0f);
+
+    TEST_ASSERT_EQUAL(SensorManager::PRESSURE_BMP3XX, manager.pressureSensorType());
+    TEST_ASSERT_EQUAL_STRING("BMP388:", manager.pressureSensorLabel());
+}
+
+void test_sensor_manager_bmp3xx_label_reports_bmp390() {
+    StorageManager storage;
+    storage.begin();
+    SensorManager manager;
+
+    Bmp580::state().start_ok = false;
+    Bmp3xx::variant_state() = Bmp3xx::Variant::BMP390;
+
+    manager.begin(storage, 0.0f, 0.0f);
+
+    TEST_ASSERT_EQUAL(SensorManager::PRESSURE_BMP3XX, manager.pressureSensorType());
+    TEST_ASSERT_EQUAL_STRING("BMP390:", manager.pressureSensorLabel());
+}
+
 void test_sensor_manager_stale_resets_temp_warning_state() {
     StorageManager storage;
     storage.begin();
@@ -361,6 +394,8 @@ int main(int, char **) {
     RUN_TEST(test_sensor_manager_sfa_fault_is_reported);
     RUN_TEST(test_sensor_manager_bmp58x_label_reports_bmp580_581_family);
     RUN_TEST(test_sensor_manager_bmp58x_label_reports_bmp585);
+    RUN_TEST(test_sensor_manager_bmp3xx_label_reports_bmp388);
+    RUN_TEST(test_sensor_manager_bmp3xx_label_reports_bmp390);
     RUN_TEST(test_sensor_manager_stale_resets_temp_warning_state);
     return UNITY_END();
 }

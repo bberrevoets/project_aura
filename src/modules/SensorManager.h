@@ -8,6 +8,7 @@
 
 #include <Arduino.h>
 #include "config/AppData.h"
+#include "drivers/Bmp3xx.h"
 #include "drivers/Bmp580.h"
 #include "drivers/Dps310.h"
 #include "drivers/Sen0466.h"
@@ -28,7 +29,8 @@ public:
     enum PressureSensorType : uint8_t {
         PRESSURE_NONE = 0,
         PRESSURE_DPS310,
-        PRESSURE_BMP58X
+        PRESSURE_BMP58X,
+        PRESSURE_BMP3XX
     };
 
     void begin(StorageManager &storage, float temp_offset, float hum_offset);
@@ -68,6 +70,7 @@ public:
     void clearVocState(StorageManager &storage);
 
 private:
+    Bmp3xx bmp3xx_;
     Bmp580 bmp580_;
     Dps310 dps310_;
     Sfa3x sfa3x_;

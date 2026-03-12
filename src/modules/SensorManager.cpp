@@ -528,13 +528,19 @@ void SensorManager::begin(StorageManager &storage, float temp_offset, float hum_
         pressure_sensor_ = PRESSURE_BMP58X;
         Logger::log(Logger::Info, "Sensors", "%s OK", bmp580_.variantLabel());
     } else {
-        dps310_.begin();
-        if (dps310_.start()) {
-            pressure_sensor_ = PRESSURE_DPS310;
-            LOGI("Sensors", "DPS310 OK");
+        bmp3xx_.begin();
+        if (bmp3xx_.start()) {
+            pressure_sensor_ = PRESSURE_BMP3XX;
+            Logger::log(Logger::Info, "Sensors", "%s OK", bmp3xx_.variantLabel());
         } else {
-            pressure_sensor_ = PRESSURE_NONE;
-            LOGW("Sensors", "Pressure sensor not found");
+            dps310_.begin();
+            if (dps310_.start()) {
+                pressure_sensor_ = PRESSURE_DPS310;
+                LOGI("Sensors", "DPS310 OK");
+            } else {
+                pressure_sensor_ = PRESSURE_NONE;
+                LOGW("Sensors", "Pressure sensor not found");
+            }
         }
     }
 
@@ -592,12 +598,22 @@ SensorManager::PollResult SensorManager::poll(SensorData &data,
     float temperature_c = 0.0f;
     bool pressure_valid = false;
     bool pressure_new = false;
+    float pressure_min_hpa = Config::DPS310_PRESSURE_MIN_HPA;
+    float pressure_max_hpa = Config::DPS310_PRESSURE_MAX_HPA;
     if (pressure_sensor_ == PRESSURE_BMP58X) {
         bmp580_.poll();
         if (bmp580_.takeNewData(pressure_hpa, temperature_c)) {
             pressure_new = true;
         }
         pressure_valid = bmp580_.isPressureValid();
+    } else if (pressure_sensor_ == PRESSURE_BMP3XX) {
+        bmp3xx_.poll();
+        if (bmp3xx_.takeNewData(pressure_hpa, temperature_c)) {
+            pressure_new = true;
+        }
+        pressure_valid = bmp3xx_.isPressureValid();
+        pressure_min_hpa = Config::BMP3XX_PRESSURE_MIN_HPA;
+        pressure_max_hpa = Config::BMP3XX_PRESSURE_MAX_HPA;
     } else if (pressure_sensor_ == PRESSURE_DPS310) {
         dps310_.poll();
         if (dps310_.takeNewData(pressure_hpa, temperature_c)) {
@@ -607,8 +623,8 @@ SensorManager::PollResult SensorManager::poll(SensorData &data,
     }
     if (pressure_new) {
         if (!isfinite(pressure_hpa) ||
-            pressure_hpa < Config::DPS310_PRESSURE_MIN_HPA ||
-            pressure_hpa > Config::DPS310_PRESSURE_MAX_HPA) {
+            pressure_hpa < pressure_min_hpa ||
+            pressure_hpa > pressure_max_hpa) {
             data.pressure = 0.0f;
             data.pressure_valid = false;
             data.pressure_delta_3h_valid = false;
@@ -690,6 +706,9 @@ bool SensorManager::isPressureOk() const {
     if (pressure_sensor_ == PRESSURE_BMP58X) {
         return bmp580_.isOk();
     }
+    if (pressure_sensor_ == PRESSURE_BMP3XX) {
+        return bmp3xx_.isOk();
+    }
     if (pressure_sensor_ == PRESSURE_DPS310) {
         return dps310_.isOk();
     }
@@ -706,6 +725,15 @@ const char *SensorManager::pressureSensorLabel() const {
                     return "BMP580/581:";
                 default:
                     return "BMP58x:";
+            }
+        case PRESSURE_BMP3XX:
+            switch (bmp3xx_.variant()) {
+                case Bmp3xx::Variant::BMP388:
+                    return "BMP388:";
+                case Bmp3xx::Variant::BMP390:
+                    return "BMP390:";
+                default:
+                    return "BMP3xx:";
             }
         case PRESSURE_DPS310:
             return "DPS310:";
