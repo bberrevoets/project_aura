@@ -28,7 +28,7 @@ public:
     enum PressureSensorType : uint8_t {
         PRESSURE_NONE = 0,
         PRESSURE_DPS310,
-        PRESSURE_BMP580
+        PRESSURE_BMP58X
     };
 
     void begin(StorageManager &storage, float temp_offset, float hum_offset);

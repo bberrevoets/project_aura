@@ -33,6 +33,17 @@ int32_t signExtend24(int32_t value) {
     return (value << 8) >> 8;
 }
 
+const char *bmp58x_variant_label(Bmp580::Variant variant) {
+    switch (variant) {
+        case Bmp580::Variant::BMP580_581:
+            return "BMP580/581";
+        case Bmp580::Variant::BMP585:
+            return "BMP585";
+        default:
+            return "BMP58x";
+    }
+}
+
 } // namespace
 
 bool Bmp580::begin() {
@@ -49,6 +60,7 @@ bool Bmp580::begin() {
     last_recover_ms_ = 0;
     pressure_valid_ = false;
     has_new_data_ = false;
+    variant_ = Variant::Unknown;
     return true;
 }
 
@@ -67,9 +79,15 @@ bool Bmp580::detect(uint8_t addr) {
     if (err != ESP_OK) {
         return false;
     }
-    if (value != Config::BMP580_CHIP_ID_PRIMARY &&
-        value != Config::BMP580_CHIP_ID_SECONDARY) {
-        return false;
+    switch (value) {
+        case Config::BMP580_CHIP_ID_PRIMARY:
+            variant_ = Variant::BMP580_581;
+            break;
+        case Config::BMP580_CHIP_ID_SECONDARY:
+            variant_ = Variant::BMP585;
+            break;
+        default:
+            return false;
     }
     addr_ = addr;
     return true;
@@ -187,11 +205,19 @@ bool Bmp580::compute(float &pressure_hpa, float &temperature_c) {
     return true;
 }
 
+const char *Bmp580::variantLabel() const {
+    return bmp58x_variant_label(variant_);
+}
+
 bool Bmp580::start() {
+    addr_ = 0;
+    variant_ = Variant::Unknown;
     if (detect(Config::BMP580_ADDR_PRIMARY)) {
-        LOGI("BMP580", "found at 0x46");
+        Logger::log(Logger::Info, "BMP58x", "%s found at 0x%02X",
+                    variantLabel(), static_cast<unsigned>(Config::BMP580_ADDR_PRIMARY));
     } else if (detect(Config::BMP580_ADDR_ALT)) {
-        LOGI("BMP580", "found at 0x47");
+        Logger::log(Logger::Info, "BMP58x", "%s found at 0x%02X",
+                    variantLabel(), static_cast<unsigned>(Config::BMP580_ADDR_ALT));
     } else {
         ok_ = false;
         return false;
@@ -222,17 +248,17 @@ void Bmp580::tryRecover(uint32_t now, const char *reason) {
         return;
     }
     last_recover_ms_ = now;
-    Logger::log(Logger::Warn, "BMP580", "%s - reinit", reason);
+    Logger::log(Logger::Warn, "BMP58x", "%s - reinit", reason);
     bool ok = start();
     if (ok) {
-        LOGI("BMP580", "recovery OK");
+        Logger::log(Logger::Info, "BMP58x", "%s recovery OK", variantLabel());
         ok_ = true;
         pressure_has_ = false;
         no_data_since_ms_ = 0;
         last_data_ms_ = 0;
         pressure_valid_ = false;
     } else {
-        LOGW("BMP580", "recovery failed");
+        LOGW("BMP58x", "recovery failed");
         ok_ = false;
     }
 }

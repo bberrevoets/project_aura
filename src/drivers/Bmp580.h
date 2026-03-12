@@ -9,6 +9,12 @@
 
 class Bmp580 {
 public:
+    enum class Variant : uint8_t {
+        Unknown = 0,
+        BMP580_581,
+        BMP585
+    };
+
     bool begin();
     bool start();
     void poll();
@@ -16,6 +22,8 @@ public:
     bool isOk() const { return ok_; }
     bool isPressureValid() const { return pressure_valid_; }
     uint32_t lastDataMs() const { return last_data_ms_; }
+    Variant variant() const { return variant_; }
+    const char *variantLabel() const;
     void invalidate();
 
 private:
@@ -44,4 +52,5 @@ private:
     uint32_t last_recover_ms_ = 0;
     bool pressure_valid_ = false;
     bool has_new_data_ = false;
+    Variant variant_ = Variant::Unknown;
 };

@@ -525,8 +525,8 @@ void SensorManager::begin(StorageManager &storage, float temp_offset, float hum_
 
     bmp580_.begin();
     if (bmp580_.start()) {
-        pressure_sensor_ = PRESSURE_BMP580;
-        LOGI("Sensors", "BMP580 OK");
+        pressure_sensor_ = PRESSURE_BMP58X;
+        Logger::log(Logger::Info, "Sensors", "%s OK", bmp580_.variantLabel());
     } else {
         dps310_.begin();
         if (dps310_.start()) {
@@ -592,7 +592,7 @@ SensorManager::PollResult SensorManager::poll(SensorData &data,
     float temperature_c = 0.0f;
     bool pressure_valid = false;
     bool pressure_new = false;
-    if (pressure_sensor_ == PRESSURE_BMP580) {
+    if (pressure_sensor_ == PRESSURE_BMP58X) {
         bmp580_.poll();
         if (bmp580_.takeNewData(pressure_hpa, temperature_c)) {
             pressure_new = true;
@@ -687,7 +687,7 @@ SensorManager::PollResult SensorManager::poll(SensorData &data,
 }
 
 bool SensorManager::isPressureOk() const {
-    if (pressure_sensor_ == PRESSURE_BMP580) {
+    if (pressure_sensor_ == PRESSURE_BMP58X) {
         return bmp580_.isOk();
     }
     if (pressure_sensor_ == PRESSURE_DPS310) {
@@ -698,8 +698,15 @@ bool SensorManager::isPressureOk() const {
 
 const char *SensorManager::pressureSensorLabel() const {
     switch (pressure_sensor_) {
-        case PRESSURE_BMP580:
-            return "BMP580:";
+        case PRESSURE_BMP58X:
+            switch (bmp580_.variant()) {
+                case Bmp580::Variant::BMP585:
+                    return "BMP585:";
+                case Bmp580::Variant::BMP580_581:
+                    return "BMP580/581:";
+                default:
+                    return "BMP58x:";
+            }
         case PRESSURE_DPS310:
             return "DPS310:";
         default:

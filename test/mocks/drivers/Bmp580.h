@@ -15,6 +15,12 @@ struct Bmp580TestState {
 
 class Bmp580 {
 public:
+    enum class Variant : uint8_t {
+        Unknown = 0,
+        BMP580_581,
+        BMP585
+    };
+
     static Bmp580TestState &state() {
         static Bmp580TestState instance;
         return instance;
@@ -37,9 +43,25 @@ public:
     bool isOk() const { return state().ok; }
     bool isPressureValid() const { return state().pressure_valid; }
     uint32_t lastDataMs() const { return state().last_data_ms; }
+    Variant variant() const { return variant_state(); }
+    const char *variantLabel() const {
+        switch (variant_state()) {
+            case Variant::BMP580_581:
+                return "BMP580/581";
+            case Variant::BMP585:
+                return "BMP585";
+            default:
+                return "BMP58x";
+        }
+    }
     void invalidate() {
         state().pressure_valid = false;
         state().has_new_data = false;
         state().invalidate_called = true;
+    }
+
+    static Variant &variant_state() {
+        static Variant instance = Variant::BMP580_581;
+        return instance;
     }
 };
