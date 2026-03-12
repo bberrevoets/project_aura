@@ -13,6 +13,60 @@
 #include <esp_sntp.h>
 
 #include "core/Logger.h"
+#ifdef UNIT_TEST
+#include "TimeMock.h"
+#endif
+
+namespace {
+
+time_t nowEpoch() {
+#ifdef UNIT_TEST
+    return mockNow();
+#else
+    return time(nullptr);
+#endif
+}
+
+bool setTimezoneEnv(const char *tz) {
+#ifdef _WIN32
+    return _putenv_s("TZ", tz ? tz : "") == 0;
+#else
+    return setenv("TZ", tz ? tz : "", 1) == 0;
+#endif
+}
+
+bool gmtimeInto(const time_t &epoch, tm &out) {
+#ifdef _WIN32
+    return gmtime_s(&out, &epoch) == 0;
+#else
+    return gmtime_r(&epoch, &out) != nullptr;
+#endif
+}
+
+bool localtimeInto(const time_t &epoch, tm &out) {
+#ifdef _WIN32
+    return localtime_s(&out, &epoch) == 0;
+#else
+    return localtime_r(&epoch, &out) != nullptr;
+#endif
+}
+
+bool setSystemEpoch(time_t epoch) {
+#ifdef UNIT_TEST
+    setNowEpoch(epoch);
+    return true;
+#elif defined(_WIN32)
+    (void)epoch;
+    return false;
+#else
+    timeval tv = {};
+    tv.tv_sec = epoch;
+    tv.tv_usec = 0;
+    return settimeofday(&tv, nullptr) == 0;
+#endif
+}
+
+} // namespace
 
 const char *TimeManager::rtcLabel() const {
     switch (rtc_type_) {
@@ -224,12 +278,14 @@ const TimeZoneEntry &TimeManager::getTimezone() const {
 }
 
 int TimeManager::currentUtcOffsetMinutes() const {
-    time_t now = time(nullptr);
+    time_t now = nowEpoch();
     if (now <= Config::TIME_VALID_EPOCH) {
         return getTimezone().offset_min;
     }
     tm utc_tm = {};
-    gmtime_r(&now, &utc_tm);
+    if (!gmtimeInto(now, utc_tm)) {
+        return getTimezone().offset_min;
+    }
     utc_tm.tm_isdst = -1;
     time_t utc_as_local = mktime(&utc_tm);
     if (utc_as_local == static_cast<time_t>(-1)) {
@@ -240,12 +296,12 @@ int TimeManager::currentUtcOffsetMinutes() const {
 }
 
 bool TimeManager::isSystemTimeValid() const {
-    time_t now = time(nullptr);
+    time_t now = nowEpoch();
     return now > Config::TIME_VALID_EPOCH;
 }
 
 bool TimeManager::getLocalTime(tm &out) {
-    time_t now = time(nullptr);
+    time_t now = nowEpoch();
     if (now <= Config::TIME_VALID_EPOCH && rtc_present_) {
         uint32_t now_ms = millis();
         if (now_ms - last_rtc_restore_ms_ >= Config::RTC_RESTORE_INTERVAL_MS) {
@@ -268,8 +324,7 @@ bool TimeManager::getLocalTime(tm &out) {
     if (now <= Config::TIME_VALID_EPOCH) {
         return false;
     }
-    localtime_r(&now, &out);
-    return true;
+    return localtimeInto(now, out);
 }
 
 bool TimeManager::syncInputsFromSystem(int &hour, int &minute, int &day, int &month, int &year) {
@@ -330,7 +385,7 @@ void TimeManager::applyTimezone() {
     const TimeZoneEntry &tz = kTimeZones[tz_index_];
     char posix_tz[32] = { 0 };
     buildTimezonePosix(tz, posix_tz, sizeof(posix_tz));
-    setenv("TZ", posix_tz, 1);
+    setTimezoneEnv(posix_tz);
     tzset();
 }
 
@@ -347,7 +402,7 @@ void TimeManager::buildFixedTzString(int offset_min, char *out, size_t len) {
 }
 
 time_t TimeManager::makeUtcEpoch(const tm &utc_tm) {
-    setenv("TZ", "UTC0", 1);
+    setTimezoneEnv("UTC0");
     tzset();
     tm tmp = utc_tm;
     time_t t = mktime(&tmp);
@@ -356,10 +411,7 @@ time_t TimeManager::makeUtcEpoch(const tm &utc_tm) {
 }
 
 bool TimeManager::setSystemTime(time_t epoch) {
-    timeval tv = {};
-    tv.tv_sec = epoch;
-    tv.tv_usec = 0;
-    return settimeofday(&tv, nullptr) == 0;
+    return setSystemEpoch(epoch);
 }
 
 bool TimeManager::rtcWriteFromEpoch(time_t epoch) {
@@ -367,7 +419,9 @@ bool TimeManager::rtcWriteFromEpoch(time_t epoch) {
         return false;
     }
     tm utc_tm = {};
-    gmtime_r(&epoch, &utc_tm);
+    if (!gmtimeInto(epoch, utc_tm)) {
+        return false;
+    }
     if (!rtcWriteTime(utc_tm)) {
         return false;
     }
@@ -435,10 +489,12 @@ TimeManager::PollResult TimeManager::ntpPoll(uint32_t now_ms) {
     if (ntp_syncing_) {
         sntp_sync_status_t sync_status = sntp_get_sync_status();
         if (sync_status == SNTP_SYNC_STATUS_COMPLETED) {
-            time_t epoch = time(nullptr);
+            time_t epoch = nowEpoch();
             if (epoch > Config::TIME_VALID_EPOCH) {
                 tm local_tm = {};
-                localtime_r(&epoch, &local_tm);
+                if (!localtimeInto(epoch, local_tm)) {
+                    return result;
+                }
                 char buf[32];
                 snprintf(buf,
                          sizeof(buf),
