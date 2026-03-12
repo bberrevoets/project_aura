@@ -137,11 +137,47 @@ void test_time_manager_init_rtc_prefers_ds3231_before_pcf8523_fallback() {
     TEST_ASSERT_EQUAL_STRING("DS3231", manager.rtcLabel());
 }
 
+void test_time_manager_init_rtc_keeps_detected_pcf8523_when_begin_fails() {
+    seedPcf8523WithOldValidTime();
+    I2cMock::setWriteFailure(Config::PCF8523_ADDR, Config::PCF8523_REG_CONTROL_3, true);
+
+    StorageManager storage;
+    storage.begin();
+
+    TimeManager manager;
+    manager.begin(storage);
+
+    TEST_ASSERT_FALSE(manager.initRtc());
+    TEST_ASSERT_TRUE(manager.isRtcPresent());
+    TEST_ASSERT_FALSE(manager.isRtcValid());
+    TEST_ASSERT_FALSE(manager.isRtcLostPower());
+    TEST_ASSERT_EQUAL_STRING("PCF8523", manager.rtcLabel());
+}
+
+void test_time_manager_init_rtc_keeps_detected_pcf8523_when_initial_read_fails() {
+    seedPcf8523WithOldValidTime();
+    I2cMock::setReadFailure(Config::PCF8523_ADDR, Config::PCF8523_REG_SECONDS, true);
+
+    StorageManager storage;
+    storage.begin();
+
+    TimeManager manager;
+    manager.begin(storage);
+
+    TEST_ASSERT_FALSE(manager.initRtc());
+    TEST_ASSERT_TRUE(manager.isRtcPresent());
+    TEST_ASSERT_FALSE(manager.isRtcValid());
+    TEST_ASSERT_FALSE(manager.isRtcLostPower());
+    TEST_ASSERT_EQUAL_STRING("PCF8523", manager.rtcLabel());
+}
+
 int main(int, char **) {
     UNITY_BEGIN();
     RUN_TEST(test_time_manager_init_rtc_handles_absent_rtc);
     RUN_TEST(test_time_manager_init_rtc_selects_pcf8523);
     RUN_TEST(test_time_manager_init_rtc_selects_ds3231);
     RUN_TEST(test_time_manager_init_rtc_prefers_ds3231_before_pcf8523_fallback);
+    RUN_TEST(test_time_manager_init_rtc_keeps_detected_pcf8523_when_begin_fails);
+    RUN_TEST(test_time_manager_init_rtc_keeps_detected_pcf8523_when_initial_read_fails);
     return UNITY_END();
 }

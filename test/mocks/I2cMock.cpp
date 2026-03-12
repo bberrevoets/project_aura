@@ -9,6 +9,8 @@ namespace {
 struct DeviceState {
     bool present = false;
     std::array<uint8_t, 256> regs{};
+    std::array<bool, 256> read_fail{};
+    std::array<bool, 256> write_fail{};
 };
 
 std::array<DeviceState, 256> g_devices{};
@@ -42,6 +44,14 @@ void setRegisters(uint8_t addr, uint8_t reg, const uint8_t *data, size_t len) {
     }
 }
 
+void setReadFailure(uint8_t addr, uint8_t reg, bool fail) {
+    device(addr).read_fail[reg] = fail;
+}
+
+void setWriteFailure(uint8_t addr, uint8_t reg, bool fail) {
+    device(addr).write_fail[reg] = fail;
+}
+
 uint8_t getRegister(uint8_t addr, uint8_t reg) {
     return device(addr).regs[reg];
 }
@@ -60,6 +70,9 @@ esp_err_t i2c_master_write_read_device(i2c_port_t,
         return ESP_FAIL;
     }
     const uint8_t reg = write_buffer[0];
+    if (device(addr).read_fail[reg]) {
+        return ESP_FAIL;
+    }
     for (size_t i = 0; i < read_size; ++i) {
         read_buffer[i] = device(addr).regs[static_cast<uint8_t>(reg + i)];
     }
@@ -75,6 +88,9 @@ esp_err_t i2c_master_write_to_device(i2c_port_t,
         return ESP_FAIL;
     }
     const uint8_t reg = write_buffer[0];
+    if (device(addr).write_fail[reg]) {
+        return ESP_FAIL;
+    }
     for (size_t i = 1; i < write_size; ++i) {
         device(addr).regs[static_cast<uint8_t>(reg + i - 1)] = write_buffer[i];
     }

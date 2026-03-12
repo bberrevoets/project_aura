@@ -102,9 +102,9 @@ bool TimeManager::initRtc() {
     if (!detectRtc()) {
         return false;
     }
+    rtc_present_ = true;
     if (!rtcBegin()) {
         LOGW("RTC", "%s init failed", rtcLabel());
-        rtc_type_ = RtcType::None;
         return false;
     }
     delay(500);
@@ -128,7 +128,6 @@ bool TimeManager::initRtc() {
     if (!read_ok) {
         return false;
     }
-    rtc_present_ = true;
     rtc_lost_power_ = osc_stop;
     bool battery_low = false;
     if (rtcReadBatteryLow(battery_low)) {
