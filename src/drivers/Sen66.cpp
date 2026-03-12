@@ -7,11 +7,24 @@
 #include "Sen66.h"
 #include <math.h>
 #include <string.h>
+#include "core/BootState.h"
 #include "core/Logger.h"
 #include "core/Sen66Status.h"
 #include "config/AppConfig.h"
 #include "core/I2CHelper.h"
 #include "modules/StorageManager.h"
+
+namespace {
+
+bool sen66AscDefaultsKnownAfterReset() {
+    return boot_reset_reason == ESP_RST_POWERON;
+}
+
+bool sen66StateUnknownAfterBoot() {
+    return boot_reset_reason != ESP_RST_POWERON;
+}
+
+} // namespace
 
 bool Sen66::begin() {
     ok_ = false;
@@ -35,6 +48,8 @@ bool Sen66::begin() {
     co2_invalid_since_ms_ = 0;
     co2_first_ = true;
     co2_idx_ = 0;
+    asc_default_known_ = sen66AscDefaultsKnownAfterReset();
+    measurement_state_unknown_ = sen66StateUnknownAfterBoot();
     return true;
 }
 
@@ -236,6 +251,8 @@ bool Sen66::deviceReset() {
     co2_invalid_since_ms_ = 0;
     co2_first_ = true;
     co2_idx_ = 0;
+    asc_default_known_ = true;
+    measurement_state_unknown_ = false;
     return true;
 }
 
@@ -411,6 +428,7 @@ bool Sen66::stop() {
     }
     delay(Config::SEN66_STOP_DELAY_MS);
     measuring_ = false;
+    measurement_state_unknown_ = false;
     return true;
 }
 
@@ -423,6 +441,7 @@ bool Sen66::startMeasurement() {
     }
     delay(Config::SEN66_START_DELAY_MS);
     measuring_ = true;
+    measurement_state_unknown_ = false;
     if (measure_start_ms_ == 0) {
         measure_start_ms_ = millis();
     }
@@ -432,12 +451,19 @@ bool Sen66::startMeasurement() {
 
 bool Sen66::setAscRaw(bool enabled) {
     bool current = false;
-    if (getAsc(current) && current == enabled) {
+    const bool initial_read_ok = getAsc(current);
+    if (initial_read_ok && current == enabled) {
         return true;
     }
 
+    uint8_t write_failures = 0;
+    uint8_t verify_read_failures = initial_read_ok ? 0 : 1;
+    bool saw_verify_value = initial_read_ok;
+    bool last_verify_value = current;
+
     for (uint8_t write_attempt = 0; write_attempt < Config::SEN66_ASC_WRITE_ATTEMPTS; ++write_attempt) {
         if (!writeCmdWithWord(Config::SEN66_CMD_ASC, enabled ? 1 : 0)) {
+            ++write_failures;
             delay(Config::SEN66_ASC_RETRY_DELAY_MS);
             continue;
         }
@@ -445,11 +471,31 @@ bool Sen66::setAscRaw(bool enabled) {
         delay(Config::SEN66_ASC_SETTLE_DELAY_MS);
         for (uint8_t verify_attempt = 0; verify_attempt < Config::SEN66_ASC_VERIFY_ATTEMPTS; ++verify_attempt) {
             bool readback = false;
-            if (getAsc(readback) && readback == enabled) {
-                return true;
+            if (getAsc(readback)) {
+                saw_verify_value = true;
+                last_verify_value = readback;
+                if (readback == enabled) {
+                    return true;
+                }
+            } else {
+                ++verify_read_failures;
             }
             delay(Config::SEN66_ASC_RETRY_DELAY_MS);
         }
+    }
+
+    uint32_t status = 0;
+    const bool status_ok = readStatus(status);
+    LOGW("SEN66",
+         "ASC apply detail: target=%s initial_read=%s write_failures=%u verify_read_failures=%u last_verify=%s%s",
+         enabled ? "enable" : "disable",
+         initial_read_ok ? (current ? "enabled" : "disabled") : "failed",
+         static_cast<unsigned>(write_failures),
+         static_cast<unsigned>(verify_read_failures),
+         saw_verify_value ? (last_verify_value ? "enabled" : "disabled") : "n/a",
+         status_ok ? "" : ", status=read-failed");
+    if (status_ok && status != 0) {
+        LOGW("SEN66", "ASC apply device status: 0x%08lX", static_cast<unsigned long>(status));
     }
 
     return false;
@@ -513,16 +559,26 @@ void Sen66::updatePressure(float pressure_hpa) {
 }
 
 bool Sen66::forceIdle() {
-    if (!measuring_) {
+    if (!measuring_ && !measurement_state_unknown_) {
         return true;
+    }
+    if (measurement_state_unknown_) {
+        LOGI("SEN66", "forcing idle after warm restart");
     }
     for (int attempt = 0; attempt < 3; ++attempt) {
         if (I2C::write_cmd(Config::SEN66_ADDR, Config::SEN66_CMD_STOP, nullptr, 0) == ESP_OK) {
             delay(Config::SEN66_STOP_DELAY_MS);
             measuring_ = false;
+            measurement_state_unknown_ = false;
             return true;
         }
         delay(Config::SEN66_CMD_DELAY_MS);
+    }
+    if (measurement_state_unknown_) {
+        LOGW("SEN66", "STOP failed while resyncing state, resetting sensor");
+        if (deviceReset()) {
+            return true;
+        }
     }
     return false;
 }
@@ -547,7 +603,10 @@ bool Sen66::start(bool asc_enabled) {
             LOGI("SEN66", "VOC state restored");
         }
     }
-    if (!setAscRaw(asc_enabled)) {
+    if (asc_enabled && asc_default_known_) {
+        // ASC is volatile and defaults to enabled after a hard reset.
+        Logger::log(Logger::Info, "SEN66", "ASC enabled (default after reset)");
+    } else if (!setAscRaw(asc_enabled)) {
         Logger::log(Logger::Warn, "SEN66",
                     "ASC set failed (%s)",
                     asc_enabled ? "enable" : "disable");
@@ -561,6 +620,7 @@ bool Sen66::start(bool asc_enabled) {
         busy_ = false;
         return false;
     }
+    asc_default_known_ = false;
     ok_ = true;
     busy_ = false;
     return true;

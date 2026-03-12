@@ -82,4 +82,6 @@ private:
     bool co2_first_ = true;
     int co2_readings_[5] = { 400, 400, 400, 400, 400 };
     int co2_idx_ = 0;
+    bool asc_default_known_ = false;
+    bool measurement_state_unknown_ = false;
 };
