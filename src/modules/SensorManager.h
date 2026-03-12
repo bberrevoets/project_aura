@@ -19,6 +19,8 @@ class PressureHistory;
 
 class SensorManager {
 public:
+    using SfaStatus = Sfa3x::Status;
+
     struct PollResult {
         bool data_changed = false;
         bool warmup_changed = false;
@@ -38,6 +40,9 @@ public:
     bool isBusy() const { return sen66_.isBusy(); }
     bool isDpsOk() const { return isPressureOk(); }
     bool isSfaOk() const { return sfa3x_.isOk(); }
+    bool isSfaPresent() const { return sfa3x_.isPresent(); }
+    bool hasSfaFault() const { return sfa3x_.hasFault(); }
+    SfaStatus sfaStatus() const { return sfa3x_.status(); }
     bool isCoPresent() const { return sen0466_.isPresent(); }
     bool isCoValid() const { return sen0466_.isDataValid(); }
     bool isCoWarmupActive() const { return sen0466_.isWarmupActive(); }

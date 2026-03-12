@@ -172,7 +172,7 @@ bool UiBootFlow::bootDiagHasErrors(UiController &owner, uint32_t now_ms) {
     if (!owner.sensorManager.isDpsOk()) {
         has_error = true;
     }
-    if (!owner.sensorManager.isSfaOk()) {
+    if (owner.sensorManager.hasSfaFault()) {
         has_error = true;
     }
     if (owner.timeManager.isRtcPresent()) {
@@ -288,11 +288,21 @@ void UiBootFlow::updateBootDiag(UiController &owner, uint32_t now_ms) {
         append_error_line(error_lines, sizeof(error_lines), error_len, "Pressure sensor read failed");
     }
     if (objects.lbl_diag_sfa) {
-        owner.safe_label_set_text(objects.lbl_diag_sfa,
-                                  owner.sensorManager.isSfaOk() ? UiText::StatusOk() : UiText::StatusErr());
+        const char *status = UiText::BootDiagNotFound();
+        switch (owner.sensorManager.sfaStatus()) {
+            case SensorManager::SfaStatus::Ok:
+                status = UiText::StatusOk();
+                break;
+            case SensorManager::SfaStatus::Fault:
+                status = UiText::StatusErr();
+                break;
+            case SensorManager::SfaStatus::Absent:
+                break;
+        }
+        owner.safe_label_set_text(objects.lbl_diag_sfa, status);
     }
-    if (!owner.sensorManager.isSfaOk()) {
-        append_error_line(error_lines, sizeof(error_lines), error_len, "SFA30 not found/read failed");
+    if (owner.sensorManager.hasSfaFault()) {
+        append_error_line(error_lines, sizeof(error_lines), error_len, "SFA30 communication failed");
     }
     if (objects.lbl_diag_co) {
         const char *status = UiText::BootDiagNotFound();

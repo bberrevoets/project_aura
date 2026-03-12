@@ -1,8 +1,10 @@
 #include <unity.h>
+#include <cstring>
 
 #include "ArduinoMock.h"
 #include "TimeMock.h"
 #include "config/AppConfig.h"
+#include "core/Logger.h"
 #include "modules/PressureHistory.h"
 #include "modules/SensorManager.h"
 #include "modules/StorageManager.h"
@@ -24,11 +26,27 @@ void setUp() {
     setMillis(0);
     setNowEpoch(Config::TIME_VALID_EPOCH + 1000);
     PressureHistory::setNowEpochFn(&mockNow);
+    Logger::begin(Serial, Logger::Debug);
+    Logger::setSerialOutputEnabled(false);
+    Logger::setSensorsSerialOutputEnabled(false);
+    Logger::resetRecentForTest();
     resetDriverStates();
 }
 
 void tearDown() {
+    Logger::resetRecentForTest();
     PressureHistory::setNowEpochFn(nullptr);
+}
+
+static bool recentContainsMessagePrefix(const char *prefix) {
+    Logger::RecentEntry recent[16];
+    const size_t count = Logger::copyRecent(recent, sizeof(recent) / sizeof(recent[0]));
+    for (size_t i = 0; i < count; ++i) {
+        if (strncmp(recent[i].message, prefix, strlen(prefix)) == 0) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void test_sensor_manager_poll_updates_data() {
@@ -220,6 +238,90 @@ void test_sensor_manager_without_co_sensor_keeps_pm1_and_clears_co() {
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 6.0f, data.pm1);
 }
 
+void test_sensor_manager_sfa_absent_is_not_fault() {
+    StorageManager storage;
+    storage.begin();
+    PressureHistory history;
+    SensorManager manager;
+    SensorData data;
+
+    auto &sfa = Sfa3x::state();
+    sfa.status = Sfa3x::Status::Absent;
+
+    manager.begin(storage, 0.0f, 0.0f);
+
+    TEST_ASSERT_FALSE(manager.isSfaPresent());
+    TEST_ASSERT_FALSE(manager.isSfaOk());
+    TEST_ASSERT_FALSE(manager.hasSfaFault());
+
+    SensorManager::PollResult result =
+        manager.poll(data, storage, history, true);
+    TEST_ASSERT_FALSE(result.data_changed);
+}
+
+void test_sensor_manager_sfa_fault_is_reported() {
+    StorageManager storage;
+    storage.begin();
+    SensorManager manager;
+
+    auto &sfa = Sfa3x::state();
+    sfa.status = Sfa3x::Status::Fault;
+
+    manager.begin(storage, 0.0f, 0.0f);
+
+    TEST_ASSERT_TRUE(manager.isSfaPresent());
+    TEST_ASSERT_FALSE(manager.isSfaOk());
+    TEST_ASSERT_TRUE(manager.hasSfaFault());
+}
+
+void test_sensor_manager_stale_resets_temp_warning_state() {
+    StorageManager storage;
+    storage.begin();
+    PressureHistory history;
+    SensorManager manager;
+    SensorData data;
+
+    manager.begin(storage, 0.0f, 0.0f);
+    Logger::resetRecentForTest();
+
+    auto &sen = Sen66::state();
+    sen.provide_data = true;
+    sen.poll_changed = true;
+    sen.update_last_data_on_poll = true;
+    sen.poll_data = SensorData{};
+    sen.poll_data.temp_valid = true;
+    sen.poll_data.temperature = 45.0f;
+
+    setMillis(Config::SEN66_POLL_MS);
+    SensorManager::PollResult first =
+        manager.poll(data, storage, history, true);
+    TEST_ASSERT_TRUE(first.data_changed);
+    TEST_ASSERT_TRUE(recentContainsMessagePrefix("Temperature outside recommended range:"));
+
+    Logger::resetRecentForTest();
+    sen.provide_data = false;
+    sen.poll_changed = false;
+    sen.update_last_data_on_poll = false;
+    setMillis(sen.last_data_ms + Config::SEN66_STALE_MS + 1);
+    SensorManager::PollResult stale =
+        manager.poll(data, storage, history, true);
+    TEST_ASSERT_TRUE(stale.data_changed);
+    TEST_ASSERT_FALSE(data.temp_valid);
+
+    Logger::resetRecentForTest();
+    sen.provide_data = true;
+    sen.poll_changed = true;
+    sen.update_last_data_on_poll = true;
+    sen.poll_data = SensorData{};
+    sen.poll_data.temp_valid = true;
+    sen.poll_data.temperature = 45.0f;
+    setMillis(getMillis() + Config::SEN66_POLL_MS);
+    SensorManager::PollResult second =
+        manager.poll(data, storage, history, true);
+    TEST_ASSERT_TRUE(second.data_changed);
+    TEST_ASSERT_TRUE(recentContainsMessagePrefix("Temperature outside recommended range:"));
+}
+
 int main(int, char **) {
     UNITY_BEGIN();
     RUN_TEST(test_sensor_manager_poll_updates_data);
@@ -228,5 +330,8 @@ int main(int, char **) {
     RUN_TEST(test_sensor_manager_pm05_clamps_to_sensor_limit);
     RUN_TEST(test_sensor_manager_pm1_invalid_resets_stale_value);
     RUN_TEST(test_sensor_manager_without_co_sensor_keeps_pm1_and_clears_co);
+    RUN_TEST(test_sensor_manager_sfa_absent_is_not_fault);
+    RUN_TEST(test_sensor_manager_sfa_fault_is_reported);
+    RUN_TEST(test_sensor_manager_stale_resets_temp_warning_state);
     return UNITY_END();
 }

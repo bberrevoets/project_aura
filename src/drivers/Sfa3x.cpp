@@ -6,19 +6,31 @@
 
 #include "Sfa3x.h"
 #include <math.h>
+#include "core/BootState.h"
 #include "core/Logger.h"
 #include "config/AppConfig.h"
 #include "core/I2CHelper.h"
 
+namespace {
+
+bool sfa3xStateUnknownAfterBoot() {
+    return boot_reset_reason != ESP_RST_POWERON;
+}
+
+} // namespace
+
 bool Sfa3x::begin() {
     ok_ = true;
     measuring_ = false;
+    measurement_state_unknown_ = sfa3xStateUnknownAfterBoot();
     data_valid_ = false;
     has_new_data_ = false;
     last_hcho_ppb_ = 0.0f;
     last_poll_ms_ = 0;
     last_data_ms_ = 0;
     fail_count_ = 0;
+    status_ = Status::Absent;
+    last_error_cause_ = ErrorCause::None;
     return true;
 }
 
@@ -26,17 +38,33 @@ void Sfa3x::start() {
     if (measuring_) {
         return;
     }
+    if (!ensureIdleBeforeStart()) {
+        ok_ = false;
+        if (status_ != Status::Absent) {
+            status_ = Status::Fault;
+            LOGW("SFA30", "start aborted (%s)", errorCauseLabel());
+        }
+        return;
+    }
     if (!writeCmd(Config::SFA3X_CMD_START)) {
         ok_ = false;
+        last_error_cause_ = ErrorCause::StartCommand;
+        if (status_ != Status::Absent) {
+            status_ = Status::Fault;
+            LOGW("SFA30", "start failed (%s)", errorCauseLabel());
+        }
         return;
     }
     delay(Config::SFA3X_START_DELAY_MS);
     measuring_ = true;
+    measurement_state_unknown_ = false;
     ok_ = true;
+    status_ = Status::Ok;
+    last_error_cause_ = ErrorCause::None;
 }
 
 void Sfa3x::stop() {
-    if (!measuring_) {
+    if (!measuring_ && !measurement_state_unknown_) {
         return;
     }
     if (!writeCmd(Config::SFA3X_CMD_STOP)) {
@@ -44,6 +72,7 @@ void Sfa3x::stop() {
     }
     delay(Config::SFA3X_STOP_DELAY_MS);
     measuring_ = false;
+    measurement_state_unknown_ = false;
 }
 
 bool Sfa3x::readData(float &hcho_ppb) {
@@ -69,13 +98,18 @@ void Sfa3x::poll() {
     float hcho_ppb = 0.0f;
     if (!readData(hcho_ppb)) {
         if (++fail_count_ == 3) {
-            LOGW("SFA30", "read values failed");
+            if (status_ != Status::Absent) {
+                status_ = Status::Fault;
+                LOGW("SFA30", "read values failed (%s)", errorCauseLabel());
+            }
             fail_count_ = 0;
         }
         return;
     }
 
     fail_count_ = 0;
+    status_ = Status::Ok;
+    last_error_cause_ = ErrorCause::None;
     if (isfinite(hcho_ppb) && hcho_ppb >= 0.0f) {
         last_hcho_ppb_ = hcho_ppb;
         data_valid_ = true;
@@ -100,6 +134,7 @@ void Sfa3x::invalidate() {
 
 bool Sfa3x::readWords(uint16_t cmd, uint16_t *out, size_t words, uint32_t delay_ms) {
     if (!writeCmd(cmd)) {
+        last_error_cause_ = ErrorCause::ReadCommand;
         return false;
     }
     delay(delay_ms);
@@ -109,11 +144,13 @@ bool Sfa3x::readWords(uint16_t cmd, uint16_t *out, size_t words, uint32_t delay_
         return false;
     }
     if (!readBytes(buf, bytes)) {
+        last_error_cause_ = ErrorCause::ReadBytes;
         return false;
     }
     for (size_t i = 0; i < words; ++i) {
         const uint8_t *p = &buf[i * 3];
         if (I2C::crc8(p, 2) != p[2]) {
+            last_error_cause_ = ErrorCause::ReadCrc;
             return false;
         }
         out[i] = (static_cast<uint16_t>(p[0]) << 8) | p[1];
@@ -127,4 +164,38 @@ bool Sfa3x::writeCmd(uint16_t cmd) {
 
 bool Sfa3x::readBytes(uint8_t *buf, size_t len) {
     return I2C::read_bytes(Config::SFA3X_ADDR, buf, len) == ESP_OK;
+}
+
+bool Sfa3x::ensureIdleBeforeStart() {
+    if (!measurement_state_unknown_) {
+        return true;
+    }
+
+    LOGI("SFA30", "forcing idle after warm restart");
+    if (!writeCmd(Config::SFA3X_CMD_STOP)) {
+        last_error_cause_ = ErrorCause::WarmRestartStop;
+        return false;
+    }
+    delay(Config::SFA3X_STOP_DELAY_MS);
+    measuring_ = false;
+    measurement_state_unknown_ = false;
+    last_error_cause_ = ErrorCause::None;
+    return true;
+}
+
+const char *Sfa3x::errorCauseLabel() const {
+    switch (last_error_cause_) {
+        case ErrorCause::WarmRestartStop:
+            return "warm-restart-stop";
+        case ErrorCause::StartCommand:
+            return "start-cmd";
+        case ErrorCause::ReadCommand:
+            return "read-cmd";
+        case ErrorCause::ReadBytes:
+            return "read-bytes";
+        case ErrorCause::ReadCrc:
+            return "crc";
+        default:
+            return "unknown";
+    }
 }

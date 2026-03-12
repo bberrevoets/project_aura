@@ -385,6 +385,8 @@ void log_soft_warnings(const SensorData &data, bool gas_warmup) {
             LOGI("Sensors", "Temperature back within recommended range: %.1f C", data.temperature);
         }
         temp_outside = temp_now_outside;
+    } else {
+        temp_outside = false;
     }
 
     if (data.hum_valid) {
@@ -397,6 +399,8 @@ void log_soft_warnings(const SensorData &data, bool gas_warmup) {
             LOGI("Sensors", "Humidity back within recommended range: %.0f%%", data.humidity);
         }
         hum_outside = hum_now_outside;
+    } else {
+        hum_outside = false;
     }
 
     log_air_metric_transition("CO2",
@@ -536,10 +540,16 @@ void SensorManager::begin(StorageManager &storage, float temp_offset, float hum_
 
     sfa3x_.begin();
     sfa3x_.start();
-    if (sfa3x_.isOk()) {
-        LOGI("Sensors", "SFA30 OK");
-    } else {
-        LOGW("Sensors", "SFA30 not found");
+    switch (sfa3x_.status()) {
+        case Sfa3x::Status::Ok:
+            LOGI("Sensors", "SFA30 OK");
+            break;
+        case Sfa3x::Status::Absent:
+            LOGI("Sensors", "SFA30 not installed");
+            break;
+        case Sfa3x::Status::Fault:
+            LOGW("Sensors", "SFA30 init failed");
+            break;
     }
 
     sen0466_.begin();
@@ -654,11 +664,6 @@ SensorManager::PollResult SensorManager::poll(SensorData &data,
         result.data_changed = true;
     }
 
-    if (apply_sanity_filters(data)) {
-        result.data_changed = true;
-    }
-    log_soft_warnings(data, warmup_now);
-
     uint32_t sen66_last_ms = sen66_.lastDataMs();
     if (sen66_last_ms != 0 && (now - sen66_last_ms > Config::SEN66_STALE_MS)) {
         if (invalidate_sen66_fields(data)) {
@@ -672,6 +677,11 @@ SensorManager::PollResult SensorManager::poll(SensorData &data,
         sfa3x_.invalidate();
         result.data_changed = true;
     }
+
+    if (apply_sanity_filters(data)) {
+        result.data_changed = true;
+    }
+    log_soft_warnings(data, warmup_now);
 
     return result;
 }

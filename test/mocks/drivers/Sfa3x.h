@@ -3,7 +3,13 @@
 #include "Arduino.h"
 
 struct Sfa3xTestState {
-    bool ok = true;
+    enum class Status : uint8_t {
+        Absent = 0,
+        Ok,
+        Fault,
+    };
+
+    Status status = Status::Ok;
     bool data_valid = false;
     bool has_new_data = false;
     bool invalidate_called = false;
@@ -13,6 +19,8 @@ struct Sfa3xTestState {
 
 class Sfa3x {
 public:
+    using Status = Sfa3xTestState::Status;
+
     static Sfa3xTestState &state() {
         static Sfa3xTestState instance;
         return instance;
@@ -24,7 +32,10 @@ public:
     bool readData(float &) { return false; }
     void poll() {}
     bool isDataValid() const { return state().data_valid; }
-    bool isOk() const { return state().ok; }
+    bool isOk() const { return state().status == Status::Ok; }
+    bool isPresent() const { return state().status != Status::Absent; }
+    bool hasFault() const { return state().status == Status::Fault; }
+    Status status() const { return state().status; }
     uint32_t lastDataMs() const { return state().last_data_ms; }
     bool takeNewData(float &hcho_ppb) {
         if (!state().has_new_data) {
