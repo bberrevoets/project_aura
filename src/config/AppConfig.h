@@ -117,8 +117,6 @@ namespace Config {
     constexpr uint8_t DS3231_REG_AGING = 0x10;
     constexpr uint8_t DS3231_REG_TEMP_MSB = 0x11;
     constexpr uint8_t DS3231_REG_TEMP_LSB = 0x12;
-    constexpr uint8_t DS3231_CONTROL_DEFAULT_MASK = 0x1C;
-    constexpr uint8_t DS3231_CONTROL_DEFAULT_BITS = 0x1C;
     constexpr uint8_t DS3231_STATUS_OSF = 0x80;
     constexpr uint8_t DS3231_STATUS_RESERVED_MASK = 0x70;
     constexpr uint8_t DS3231_TEMP_LSB_UNUSED_MASK = 0x3F;

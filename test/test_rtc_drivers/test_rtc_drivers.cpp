@@ -19,11 +19,16 @@ void seedPcf8523Signature() {
                           signature, sizeof(signature));
 }
 
-void seedDs3231Signature() {
+void seedDs3231Signature(uint8_t control = 0x1C) {
     I2cMock::setDevicePresent(Config::DS3231_ADDR, true);
-    const uint8_t signature[] = {0x1C, 0x88, 0x00, 0x19, 0x40};
+    const uint8_t signature[] = {control, 0x88, 0x00, 0x19, 0x40};
     I2cMock::setRegisters(Config::DS3231_ADDR, Config::DS3231_REG_CONTROL,
                           signature, sizeof(signature));
+    const uint8_t time_regs[] = {
+        toBcd(42), toBcd(35), toBcd(14), 4, toBcd(12), toBcd(3), toBcd(26)
+    };
+    I2cMock::setRegisters(Config::DS3231_ADDR, Config::DS3231_REG_SECONDS,
+                          time_regs, sizeof(time_regs));
 }
 
 } // namespace
@@ -73,6 +78,16 @@ void test_ds3231_probe_matches_signature() {
     TEST_ASSERT_FALSE(pcf8523.probe());
 }
 
+void test_ds3231_probe_accepts_nondefault_control_bits() {
+    seedDs3231Signature(0x03);
+
+    Ds3231 ds3231;
+    Pcf8523 pcf8523;
+
+    TEST_ASSERT_TRUE(ds3231.probe());
+    TEST_ASSERT_FALSE(pcf8523.probe());
+}
+
 void test_ds3231_read_time_reports_osf_and_valid_time() {
     seedDs3231Signature();
     const uint8_t time_regs[] = {
@@ -114,6 +129,7 @@ int main(int, char **) {
     RUN_TEST(test_pcf8523_probe_matches_project_signature);
     RUN_TEST(test_pcf8523_probe_falls_back_to_calendar_layout);
     RUN_TEST(test_ds3231_probe_matches_signature);
+    RUN_TEST(test_ds3231_probe_accepts_nondefault_control_bits);
     RUN_TEST(test_ds3231_read_time_reports_osf_and_valid_time);
     RUN_TEST(test_pcf8523_begin_enables_battery_switching);
     return UNITY_END();

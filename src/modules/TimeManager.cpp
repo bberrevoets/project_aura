@@ -524,14 +524,15 @@ TimeManager::PollResult TimeManager::pollRtcStatus(uint32_t now_ms) {
 }
 
 bool TimeManager::detectRtc() {
-    if (ds3231_.probe()) {
-        rtc_type_ = RtcType::Ds3231;
-        LOGI("RTC", "%s found at 0x%02X", rtcLabel(), Config::DS3231_ADDR);
-        return true;
-    }
+    // Prefer the explicit PCF8523 signature first on the shared 0x68 address.
     if (pcf8523_.probe()) {
         rtc_type_ = RtcType::Pcf8523;
         LOGI("RTC", "%s found at 0x%02X", rtcLabel(), Config::PCF8523_ADDR);
+        return true;
+    }
+    if (ds3231_.probe()) {
+        rtc_type_ = RtcType::Ds3231;
+        LOGI("RTC", "%s found at 0x%02X", rtcLabel(), Config::DS3231_ADDR);
         return true;
     }
     rtc_type_ = RtcType::None;
