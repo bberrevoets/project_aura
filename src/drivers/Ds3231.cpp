@@ -17,18 +17,68 @@ uint8_t bcd2bin(uint8_t val) {
     return val - 6 * (val >> 4);
 }
 
+bool isBcdByte(uint8_t raw) {
+    return ((raw >> 4) & 0x0F) <= 9 && (raw & 0x0F) <= 9;
+}
+
+bool isBcdWithin(uint8_t raw, uint8_t mask, uint8_t max_value, bool allow_zero) {
+    raw &= mask;
+    if (!isBcdByte(raw)) {
+        return false;
+    }
+    const uint8_t value = bcd2bin(raw);
+    if (!allow_zero && value == 0) {
+        return false;
+    }
+    return value <= max_value;
+}
+
+bool hasValidHourLayout(uint8_t raw) {
+    if ((raw & 0x80) != 0) {
+        return false;
+    }
+    if ((raw & 0x40) != 0) {
+        return isBcdWithin(raw, 0x1F, 12, false);
+    }
+    return isBcdWithin(raw, 0x3F, 23, true);
+}
+
 } // namespace
 
 bool Ds3231::probe() {
+    return probeStrength() != ProbeStrength::None;
+}
+
+Ds3231::ProbeStrength Ds3231::probeStrength() {
     uint8_t meta_regs[4] = { 0 };
     if (!read(Config::DS3231_REG_STATUS, meta_regs, sizeof(meta_regs))) {
-        return false;
+        return ProbeStrength::None;
+    }
+
+    uint8_t wrap_regs[4] = { 0 };
+    uint8_t head_regs[2] = { 0 };
+    if (!read(Config::DS3231_REG_TEMP_MSB, wrap_regs, sizeof(wrap_regs)) ||
+        !read(Config::DS3231_REG_SECONDS, head_regs, sizeof(head_regs))) {
+        return ProbeStrength::None;
     }
 
     // Keep probe read-only and identify the chip only by immutable register shape.
     // Calendar contents can be dirty after power loss and must not affect detect.
-    return (meta_regs[0] & Config::DS3231_STATUS_RESERVED_MASK) == 0 &&
-           (meta_regs[3] & Config::DS3231_TEMP_LSB_UNUSED_MASK) == 0;
+    const bool meta_valid =
+        (meta_regs[0] & Config::DS3231_STATUS_RESERVED_MASK) == 0 &&
+        (meta_regs[3] & Config::DS3231_TEMP_LSB_UNUSED_MASK) == 0;
+    const bool wrap_valid =
+        wrap_regs[2] == head_regs[0] &&
+        wrap_regs[3] == head_regs[1];
+
+    if (!meta_valid || !wrap_valid) {
+        return ProbeStrength::None;
+    }
+
+    if ((meta_regs[3] & 0xC0) != 0) {
+        return ProbeStrength::Strong;
+    }
+    return ProbeStrength::Weak;
 }
 
 bool Ds3231::begin() {
@@ -86,6 +136,26 @@ bool Ds3231::readTime(tm &out, bool &osc_stop, bool &valid) {
 
     osc_stop = (status & Config::DS3231_STATUS_OSF) != 0;
 
+    const bool layout_valid =
+        isBcdWithin(buf[0], 0x7F, 59, true) &&
+        isBcdWithin(buf[1], 0x7F, 59, true) &&
+        hasValidHourLayout(buf[2]) &&
+        (buf[3] & 0xF8) == 0 &&
+        (buf[3] & 0x07) >= 1 &&
+        (buf[3] & 0x07) <= 7 &&
+        (buf[4] & 0xC0) == 0 &&
+        isBcdWithin(buf[4], 0x3F, 31, false) &&
+        (buf[5] & 0x60) == 0 &&
+        isBcdWithin(buf[5], 0x1F, 12, false) &&
+        isBcdByte(buf[6]);
+
+    memset(&out, 0, sizeof(out));
+    out.tm_isdst = 0;
+    if (!layout_valid) {
+        valid = false;
+        return true;
+    }
+
     const int sec = bcd2bin(buf[0] & 0x7F);
     const int min = bcd2bin(buf[1] & 0x7F);
     int hour = 0;
@@ -108,8 +178,6 @@ bool Ds3231::readTime(tm &out, bool &osc_stop, bool &valid) {
     valid = !(sec > 59 || min > 59 || hour > 23 || day < 1 || day > 31 ||
               month < 1 || month > 12 || year < 2000 || year > 2099 ||
               weekday < 1 || weekday > 7);
-
-    memset(&out, 0, sizeof(out));
     if (valid) {
         out.tm_sec = sec;
         out.tm_min = min;
@@ -119,7 +187,6 @@ bool Ds3231::readTime(tm &out, bool &osc_stop, bool &valid) {
         out.tm_year = year - 1900;
         out.tm_wday = weekday % 7;
     }
-    out.tm_isdst = 0;
     return true;
 }
 

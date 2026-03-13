@@ -97,7 +97,9 @@ bool TimeManager::initRtc() {
     rtc_valid_ = false;
     rtc_lost_power_ = false;
     rtc_battery_low_ = false;
+    rtc_probe_needs_pcf_verification_ = false;
     last_rtc_status_poll_ms_ = 0;
+    rtc_read_fail_count_ = 0;
 
     if (!detectRtc()) {
         return false;
@@ -111,18 +113,12 @@ bool TimeManager::initRtc() {
     tm utc_tm = {};
     bool osc_stop = false;
     bool time_valid = false;
-    bool read_ok = false;
-    for (uint8_t attempt = 0; attempt < Config::RTC_INIT_ATTEMPTS; ++attempt) {
-        if (attempt > 0) {
-            delay(Config::RTC_INIT_RETRY_MS);
-            LOGD("RTC", "retry %u", attempt);
-        }
-        if (!rtcReadTime(utc_tm, osc_stop, time_valid)) {
-            continue;
-        }
-        read_ok = true;
-        if (!osc_stop && time_valid) {
-            break;
+    bool read_ok = readRtcInitState(utc_tm, osc_stop, time_valid);
+    if (rtc_type_ == RtcType::Ds3231 &&
+        rtc_probe_needs_pcf_verification_ &&
+        (!read_ok || (!osc_stop && !time_valid))) {
+        if (retryWeakDs3231AsPcf8523(utc_tm, osc_stop, time_valid)) {
+            read_ok = true;
         }
     }
     if (!read_ok) {
@@ -153,6 +149,42 @@ bool TimeManager::initRtc() {
     }
     rtc_valid_ = false;
     return false;
+}
+
+bool TimeManager::readRtcInitState(tm &utc_tm, bool &osc_stop, bool &time_valid) {
+    bool read_ok = false;
+    for (uint8_t attempt = 0; attempt < Config::RTC_INIT_ATTEMPTS; ++attempt) {
+        if (attempt > 0) {
+            delay(Config::RTC_INIT_RETRY_MS);
+            LOGD("RTC", "retry %u", attempt);
+        }
+        if (!rtcReadTime(utc_tm, osc_stop, time_valid)) {
+            continue;
+        }
+        read_ok = true;
+        noteRtcReadSuccess(false);
+        if (!osc_stop && time_valid) {
+            break;
+        }
+    }
+    return read_ok;
+}
+
+bool TimeManager::retryWeakDs3231AsPcf8523(tm &utc_tm, bool &osc_stop, bool &time_valid) {
+    if (!pcf8523_.probeFallback()) {
+        return false;
+    }
+
+    LOGW("RTC", "weak DS3231 probe did not validate, retrying as %s", Pcf8523::label());
+    rtc_type_ = RtcType::Pcf8523;
+    rtc_probe_needs_pcf_verification_ = false;
+
+    if (!rtcBegin()) {
+        LOGW("RTC", "%s init failed after weak DS3231 retry", rtcLabel());
+        return false;
+    }
+    delay(500);
+    return readRtcInitState(utc_tm, osc_stop, time_valid);
 }
 
 bool TimeManager::updateWifiState(bool wifi_enabled, bool wifi_connected) {
@@ -309,6 +341,7 @@ bool TimeManager::getLocalTime(tm &out) {
             bool osc_stop = false;
             bool time_valid = false;
             if (rtcReadTime(utc_tm, osc_stop, time_valid)) {
+                noteRtcReadSuccess(false);
                 rtc_lost_power_ = osc_stop;
                 rtc_valid_ = time_valid && !osc_stop;
                 if (rtc_valid_) {
@@ -317,6 +350,8 @@ bool TimeManager::getLocalTime(tm &out) {
                         now = epoch;
                     }
                 }
+            } else {
+                noteRtcReadFailure(false);
             }
         }
     }
@@ -554,6 +589,7 @@ TimeManager::PollResult TimeManager::pollRtcStatus(uint32_t now_ms) {
     bool osc_stop = false;
     bool time_valid = false;
     if (rtcReadTime(utc_tm, osc_stop, time_valid)) {
+        noteRtcReadSuccess(true);
         bool rtc_valid = false;
         if (time_valid) {
             const time_t epoch = makeUtcEpoch(utc_tm);
@@ -565,6 +601,8 @@ TimeManager::PollResult TimeManager::pollRtcStatus(uint32_t now_ms) {
         rtc_lost_power_ = osc_stop;
         rtc_valid_ = rtc_valid;
         rtc_present_ = true;
+    } else if (noteRtcReadFailure(true)) {
+        result.state_changed = true;
     }
 
     bool battery_low = false;
@@ -578,22 +616,67 @@ TimeManager::PollResult TimeManager::pollRtcStatus(uint32_t now_ms) {
     return result;
 }
 
+void TimeManager::noteRtcReadSuccess(bool log_transition) {
+    const bool had_comm_fault = rtc_read_fail_count_ >= Config::RTC_STATUS_READ_FAIL_LIMIT;
+    rtc_read_fail_count_ = 0;
+    if (had_comm_fault && log_transition) {
+        LOGI("RTC", "%s communication restored", rtcLabel());
+    }
+}
+
+bool TimeManager::noteRtcReadFailure(bool log_transition) {
+    if (!rtc_present_) {
+        return false;
+    }
+    if (rtc_read_fail_count_ < UINT8_MAX) {
+        ++rtc_read_fail_count_;
+    }
+    if (rtc_read_fail_count_ < Config::RTC_STATUS_READ_FAIL_LIMIT) {
+        return false;
+    }
+
+    const bool crossed_threshold = rtc_read_fail_count_ == Config::RTC_STATUS_READ_FAIL_LIMIT;
+    if (crossed_threshold && log_transition) {
+        LOGW("RTC", "%s read failed repeatedly", rtcLabel());
+    }
+
+    const bool state_changed = rtc_valid_;
+    rtc_valid_ = false;
+    rtc_present_ = true;
+    return state_changed;
+}
+
 bool TimeManager::detectRtc() {
+    rtc_probe_needs_pcf_verification_ = false;
+
     // Prefer the explicit PCF8523 signature first on the shared 0x68 address.
     if (pcf8523_.probe()) {
         rtc_type_ = RtcType::Pcf8523;
         LOGI("RTC", "%s found at 0x%02X", rtcLabel(), Config::PCF8523_ADDR);
         return true;
     }
-    if (ds3231_.probe()) {
+
+    const Ds3231::ProbeStrength ds3231_probe = ds3231_.probeStrength();
+    if (ds3231_probe == Ds3231::ProbeStrength::Strong) {
         rtc_type_ = RtcType::Ds3231;
         LOGI("RTC", "%s found at 0x%02X", rtcLabel(), Config::DS3231_ADDR);
         return true;
     }
-    // Keep the broader calendar-layout fallback only after DS3231 was rejected.
+
     if (pcf8523_.probeFallback()) {
+        if (ds3231_probe == Ds3231::ProbeStrength::Weak) {
+            rtc_type_ = RtcType::Ds3231;
+            rtc_probe_needs_pcf_verification_ = true;
+            LOGI("RTC", "%s weak signature at 0x%02X", rtcLabel(), Config::DS3231_ADDR);
+            return true;
+        }
         rtc_type_ = RtcType::Pcf8523;
         LOGI("RTC", "%s found at 0x%02X", rtcLabel(), Config::PCF8523_ADDR);
+        return true;
+    }
+    if (ds3231_probe == Ds3231::ProbeStrength::Weak) {
+        rtc_type_ = RtcType::Ds3231;
+        LOGI("RTC", "%s found at 0x%02X", rtcLabel(), Config::DS3231_ADDR);
         return true;
     }
     rtc_type_ = RtcType::None;

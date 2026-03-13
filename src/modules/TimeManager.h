@@ -76,6 +76,8 @@ private:
     bool setSystemTime(time_t epoch);
     bool rtcWriteFromEpoch(time_t epoch);
     bool detectRtc();
+    bool readRtcInitState(tm &utc_tm, bool &osc_stop, bool &time_valid);
+    bool retryWeakDs3231AsPcf8523(tm &utc_tm, bool &osc_stop, bool &time_valid);
     bool rtcBegin();
     bool rtcReadTime(tm &out, bool &osc_stop, bool &valid);
     bool rtcWriteTime(const tm &utc_tm);
@@ -85,6 +87,8 @@ private:
     bool syncNtpWithWifi();
     PollResult ntpPoll(uint32_t now_ms);
     PollResult pollRtcStatus(uint32_t now_ms);
+    void noteRtcReadSuccess(bool log_transition);
+    bool noteRtcReadFailure(bool log_transition);
     bool applyRtcBatteryLowState(bool battery_low, bool log_transition);
     void stopNtpService();
     static void buildTimezonePosix(const TimeZoneEntry &tz, char *out, size_t len);
@@ -98,6 +102,7 @@ private:
     bool rtc_valid_ = false;
     bool rtc_lost_power_ = false;
     bool rtc_battery_low_ = false;
+    bool rtc_probe_needs_pcf_verification_ = false;
 
     bool ntp_enabled_pref_ = true;
     bool ntp_enabled_ = true;
@@ -108,6 +113,7 @@ private:
     uint32_t ntp_sync_start_ms_ = 0;
     uint32_t last_rtc_restore_ms_ = 0;
     uint32_t last_rtc_status_poll_ms_ = 0;
+    uint8_t rtc_read_fail_count_ = 0;
 
     bool wifi_enabled_ = false;
     bool wifi_connected_ = false;

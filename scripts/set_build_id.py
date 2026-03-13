@@ -20,13 +20,8 @@ def resolve_build_id():
     if not short_sha:
         return "nogit"
 
-    dirty = subprocess.call(
-        ["git", "diff", "--quiet", "--ignore-submodules", "HEAD", "--"],
-        cwd=env["PROJECT_DIR"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    if dirty != 0:
+    dirty = _run_git(["status", "--porcelain", "--untracked-files=normal"])
+    if dirty:
         return f"{short_sha}-dirty"
     return short_sha
 

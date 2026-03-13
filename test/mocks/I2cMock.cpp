@@ -20,6 +20,7 @@ struct DeviceState {
     std::array<bool, 256> read_fail{};
     std::array<bool, 256> write_fail{};
     std::unordered_set<uint16_t> failing_cmds;
+    uint16_t read_wrap_last_reg = 0xFF;
 };
 
 std::array<DeviceState, 256> g_devices{};
@@ -59,6 +60,10 @@ void setRegisters(uint8_t addr, uint8_t reg, const uint8_t *data, size_t len) {
     for (size_t i = 0; i < len; ++i) {
         device(addr).regs[static_cast<uint8_t>(reg + i)] = data[i];
     }
+}
+
+void setReadWrap(uint8_t addr, uint8_t last_reg) {
+    device(addr).read_wrap_last_reg = last_reg;
 }
 
 void setReadFailure(uint8_t addr, uint8_t reg, bool fail) {
@@ -146,8 +151,15 @@ esp_err_t i2c_master_write_read_device(i2c_port_t,
     if (device(addr).read_fail[reg]) {
         return ESP_FAIL;
     }
+    uint8_t current_reg = reg;
     for (size_t i = 0; i < read_size; ++i) {
-        read_buffer[i] = device(addr).regs[static_cast<uint8_t>(reg + i)];
+        read_buffer[i] = device(addr).regs[current_reg];
+        if (device(addr).read_wrap_last_reg != 0xFF &&
+            current_reg == static_cast<uint8_t>(device(addr).read_wrap_last_reg)) {
+            current_reg = 0x00;
+        } else {
+            current_reg = static_cast<uint8_t>(current_reg + 1);
+        }
     }
     return ESP_OK;
 }

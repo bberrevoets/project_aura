@@ -11,7 +11,14 @@
 
 class Ds3231 {
 public:
+    enum class ProbeStrength : uint8_t {
+        None = 0,
+        Weak,
+        Strong,
+    };
+
     bool probe();
+    ProbeStrength probeStrength();
     bool begin();
     bool readTime(tm &out, bool &osc_stop, bool &valid);
     bool writeTime(const tm &utc_tm);

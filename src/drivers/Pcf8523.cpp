@@ -13,6 +13,26 @@ namespace {
 
 constexpr uint8_t kPcf8523BatteryLowFlag = 0x04;
 
+uint8_t bcd2binLocal(uint8_t val) {
+    return val - 6 * (val >> 4);
+}
+
+bool isBcdByte(uint8_t raw) {
+    return ((raw >> 4) & 0x0F) <= 9 && (raw & 0x0F) <= 9;
+}
+
+bool isBcdWithin(uint8_t raw, uint8_t mask, uint8_t max_value, bool allow_zero) {
+    raw &= mask;
+    if (!isBcdByte(raw)) {
+        return false;
+    }
+    const uint8_t value = bcd2binLocal(raw);
+    if (!allow_zero && value == 0) {
+        return false;
+    }
+    return value <= max_value;
+}
+
 } // namespace
 
 bool Pcf8523::probe() {
@@ -110,6 +130,24 @@ bool Pcf8523::readTime(tm &out, bool &osc_stop, bool &valid) {
         return false;
     }
     osc_stop = (buf[0] & 0x80) != 0;
+
+    const bool layout_valid =
+        isBcdWithin(buf[0], 0x7F, 59, true) &&
+        isBcdWithin(buf[1], 0x7F, 59, true) &&
+        isBcdWithin(buf[2], 0x3F, 23, true) &&
+        isBcdWithin(buf[3], 0x3F, 31, false) &&
+        (buf[4] & 0xF8) == 0 &&
+        (buf[5] & 0xE0) == 0 &&
+        isBcdWithin(buf[5], 0x1F, 12, false) &&
+        isBcdByte(buf[6]);
+
+    memset(&out, 0, sizeof(out));
+    out.tm_isdst = 0;
+    if (!layout_valid) {
+        valid = false;
+        return true;
+    }
+
     int sec = bcd2bin(buf[0] & 0x7F);
     int min = bcd2bin(buf[1] & 0x7F);
     int hour = bcd2bin(buf[2] & 0x3F);
@@ -119,7 +157,6 @@ bool Pcf8523::readTime(tm &out, bool &osc_stop, bool &valid) {
     int year = bcd2bin(buf[6]) + 2000;
     valid = !(sec > 59 || min > 59 || hour > 23 || day < 1 || day > 31 ||
               month < 1 || month > 12 || year < 2000 || year > 2099);
-    memset(&out, 0, sizeof(out));
     if (valid) {
         out.tm_sec = sec;
         out.tm_min = min;
@@ -129,7 +166,6 @@ bool Pcf8523::readTime(tm &out, bool &osc_stop, bool &valid) {
         out.tm_year = year - 1900;
         out.tm_wday = wday;
     }
-    out.tm_isdst = 0;
     return true;
 }
 
