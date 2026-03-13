@@ -17,61 +17,18 @@ uint8_t bcd2bin(uint8_t val) {
     return val - 6 * (val >> 4);
 }
 
-bool isBcdByte(uint8_t raw) {
-    return ((raw >> 4) & 0x0F) <= 9 && (raw & 0x0F) <= 9;
-}
-
-bool isBcdWithin(uint8_t raw, uint8_t mask, uint8_t max_value, bool allow_zero) {
-    raw &= mask;
-    if (!isBcdByte(raw)) {
-        return false;
-    }
-    const uint8_t value = bcd2bin(raw);
-    if (!allow_zero && value == 0) {
-        return false;
-    }
-    return value <= max_value;
-}
-
-bool hasValidHourLayout(uint8_t raw) {
-    if ((raw & 0x80) != 0) {
-        return false;
-    }
-    if ((raw & 0x40) != 0) {
-        return isBcdWithin(raw, 0x1F, 12, false);
-    }
-    return isBcdWithin(raw, 0x3F, 23, true);
-}
-
-bool hasValidCalendarLayout(const uint8_t *regs) {
-    return (regs[0] & 0x80) == 0 &&
-           isBcdWithin(regs[0], 0x7F, 59, true) &&
-           (regs[1] & 0x80) == 0 &&
-           isBcdWithin(regs[1], 0x7F, 59, true) &&
-           hasValidHourLayout(regs[2]) &&
-           (regs[3] & 0xF8) == 0 &&
-           (regs[3] & 0x07) <= 7 &&
-           (regs[4] & 0xC0) == 0 &&
-           isBcdWithin(regs[4], 0x3F, 31, false) &&
-           (regs[5] & 0x60) == 0 &&
-           isBcdWithin(regs[5], 0x1F, 12, false) &&
-           isBcdByte(regs[6]);
-}
-
 } // namespace
 
 bool Ds3231::probe() {
     uint8_t meta_regs[4] = { 0 };
-    uint8_t time_regs[7] = { 0 };
-    if (!read(Config::DS3231_REG_STATUS, meta_regs, sizeof(meta_regs)) ||
-        !read(Config::DS3231_REG_SECONDS, time_regs, sizeof(time_regs))) {
+    if (!read(Config::DS3231_REG_STATUS, meta_regs, sizeof(meta_regs))) {
         return false;
     }
 
-    // Keep probe read-only and avoid depending on mutable CONTROL bits.
+    // Keep probe read-only and identify the chip only by immutable register shape.
+    // Calendar contents can be dirty after power loss and must not affect detect.
     return (meta_regs[0] & Config::DS3231_STATUS_RESERVED_MASK) == 0 &&
-           (meta_regs[3] & Config::DS3231_TEMP_LSB_UNUSED_MASK) == 0 &&
-           hasValidCalendarLayout(time_regs);
+           (meta_regs[3] & Config::DS3231_TEMP_LSB_UNUSED_MASK) == 0;
 }
 
 bool Ds3231::begin() {

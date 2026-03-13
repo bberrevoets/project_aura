@@ -42,6 +42,20 @@ void seedDs3231WithOldValidTime() {
                           time_regs, sizeof(time_regs));
 }
 
+void seedDs3231WithDirtyCalendar() {
+    I2cMock::setDevicePresent(Config::DS3231_ADDR, true);
+
+    const uint8_t meta_regs[] = {0x00, 0x00, 0x19, 0x40};
+    I2cMock::setRegisters(Config::DS3231_ADDR, Config::DS3231_REG_STATUS,
+                          meta_regs, sizeof(meta_regs));
+
+    const uint8_t time_regs[] = {
+        toBcd(56), toBcd(34), toBcd(12), 0x00, 0x00, 0x00, toBcd(19)
+    };
+    I2cMock::setRegisters(Config::DS3231_ADDR, Config::DS3231_REG_SECONDS,
+                          time_regs, sizeof(time_regs));
+}
+
 void seedDs3231ThatLooksLikePcf8523Fallback() {
     I2cMock::setDevicePresent(Config::DS3231_ADDR, true);
 
@@ -121,6 +135,22 @@ void test_time_manager_init_rtc_selects_ds3231() {
     TEST_ASSERT_EQUAL_STRING("DS3231", manager.rtcLabel());
 }
 
+void test_time_manager_init_rtc_keeps_dirty_ds3231_visible() {
+    seedDs3231WithDirtyCalendar();
+
+    StorageManager storage;
+    storage.begin();
+
+    TimeManager manager;
+    manager.begin(storage);
+
+    TEST_ASSERT_FALSE(manager.initRtc());
+    TEST_ASSERT_TRUE(manager.isRtcPresent());
+    TEST_ASSERT_FALSE(manager.isRtcValid());
+    TEST_ASSERT_FALSE(manager.isRtcLostPower());
+    TEST_ASSERT_EQUAL_STRING("DS3231", manager.rtcLabel());
+}
+
 void test_time_manager_init_rtc_prefers_ds3231_before_pcf8523_fallback() {
     seedDs3231ThatLooksLikePcf8523Fallback();
 
@@ -176,6 +206,7 @@ int main(int, char **) {
     RUN_TEST(test_time_manager_init_rtc_handles_absent_rtc);
     RUN_TEST(test_time_manager_init_rtc_selects_pcf8523);
     RUN_TEST(test_time_manager_init_rtc_selects_ds3231);
+    RUN_TEST(test_time_manager_init_rtc_keeps_dirty_ds3231_visible);
     RUN_TEST(test_time_manager_init_rtc_prefers_ds3231_before_pcf8523_fallback);
     RUN_TEST(test_time_manager_init_rtc_keeps_detected_pcf8523_when_begin_fails);
     RUN_TEST(test_time_manager_init_rtc_keeps_detected_pcf8523_when_initial_read_fails);
