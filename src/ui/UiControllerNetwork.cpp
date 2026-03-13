@@ -23,18 +23,18 @@ namespace {
 
 const char *rtc_runtime_status_text(const TimeManager &timeManager) {
     if (!timeManager.isRtcPresent()) {
-        return "Status: Not found";
+        return UiText::RtcDetectionStatusNotFound();
     }
     if (timeManager.isRtcBatteryLow()) {
-        return "Status: Battery low";
+        return UiText::RtcDetectionStatusBatteryLow();
     }
     if (timeManager.isRtcLostPower()) {
-        return "Status: Lost power";
+        return UiText::RtcDetectionStatusLostPower();
     }
     if (!timeManager.isRtcValid()) {
-        return "Status: Time invalid";
+        return UiText::RtcDetectionStatusTimeInvalid();
     }
-    return "Status: OK";
+    return UiText::RtcDetectionStatusOk();
 }
 
 lv_color_t rtc_runtime_status_color(const TimeManager &timeManager) {
@@ -246,14 +246,14 @@ void UiController::update_rtc_detection_ui() {
                     rtc_detection_pending_mode_ == Config::RtcMode::Ds3231);
 
     if (objects.label_rtc_detection_title_2) {
-        char line[48];
+        char line[96];
         if (rtc_detection_pending_mode_ == Config::RtcMode::Auto) {
-            const char *detected = timeManager.isRtcPresent() ? timeManager.rtcLabel() : "none";
-            snprintf(line, sizeof(line), "Detected: %s", detected);
+            const char *detected = timeManager.isRtcPresent() ? timeManager.rtcLabel() : UiText::RtcDetectionNone();
+            snprintf(line, sizeof(line), UiText::RtcDetectionDetectedFmt(), detected);
         } else {
             snprintf(line,
                      sizeof(line),
-                     "Selected: %s",
+                     UiText::RtcDetectionSelectedFmt(),
                      TimeManager::rtcModeLabel(rtc_detection_pending_mode_));
         }
         safe_label_set_text(objects.label_rtc_detection_title_2, line);
@@ -265,7 +265,7 @@ void UiController::update_rtc_detection_ui() {
     if (objects.label_rtc_detection_title_3) {
         const bool pending_changed = rtc_detection_pending_mode_ != rtc_detection_saved_mode_;
         const char *status_text = pending_changed
-                                      ? "Status: Restart required to apply changes"
+                                      ? UiText::RtcDetectionStatusRestartRequired()
                                       : rtc_runtime_status_text(timeManager);
         const lv_color_t status_color = pending_changed
                                             ? color_yellow()
@@ -743,4 +743,9 @@ void UiController::update_datetime_texts() {
     if (objects.label_rtc_title) safe_label_set_text(objects.label_rtc_title, UiText::LabelRtc());
     if (objects.label_wifi_title_1) safe_label_set_text(objects.label_wifi_title_1, UiText::LabelWifiChip());
     if (objects.label_chip_ntp_title) safe_label_set_text(objects.label_chip_ntp_title, UiText::LabelNtpChip());
+    if (objects.label_rtc_detection_title) safe_label_set_text(objects.label_rtc_detection_title, UiText::LabelRtcDetectionHelp());
+    if (objects.label_rtc_detection_auto) safe_label_set_text(objects.label_rtc_detection_auto, UiText::LabelRtcDetectionAuto());
+    if (objects.label_rtc_detection_pcf8523) safe_label_set_text(objects.label_rtc_detection_pcf8523, "PCF8523");
+    if (objects.label_rtc_detection_ds3231) safe_label_set_text(objects.label_rtc_detection_ds3231, "DS3231");
+    if (objects.label_rtc_detection_title_1) safe_label_set_text(objects.label_rtc_detection_title_1, UiText::LabelRtcDetectionHint());
 }
