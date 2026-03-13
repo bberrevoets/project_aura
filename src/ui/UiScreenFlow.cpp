@@ -46,6 +46,7 @@ void UiScreenFlow::processPendingScreen(UiController &owner, uint32_t now_ms) {
             refresh_status_icons_after_switch = !was_bound;
             owner.current_screen_id = next_screen;
             owner.pending_screen_id = 0;
+            owner.reset_dynamic_url_caches();
 
             // Lazily rebuilt screens can be released on exit.
             // Delay unload slightly to avoid racing with screen activation.

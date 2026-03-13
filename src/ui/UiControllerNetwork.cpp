@@ -271,7 +271,10 @@ void UiController::update_wifi_ui() {
     if (objects.qrcode_wifi_portal) {
         if (wifi_state == AuraNetworkManager::WIFI_STATE_AP_CONFIG) {
             lv_obj_clear_flag(objects.qrcode_wifi_portal, LV_OBJ_FLAG_HIDDEN);
-            lv_qrcode_update(objects.qrcode_wifi_portal, UiText::WifiPortalUrl(), strlen(UiText::WifiPortalUrl()));
+            update_qrcode_if_needed(objects.qrcode_wifi_portal,
+                                    UiText::WifiPortalUrl(),
+                                    wifi_portal_qr_cache_,
+                                    sizeof(wifi_portal_qr_cache_));
         } else {
             lv_obj_add_flag(objects.qrcode_wifi_portal, LV_OBJ_FLAG_HIDDEN);
         }
@@ -536,7 +539,10 @@ void UiController::update_mqtt_ui() {
     if (objects.qrcode_mqtt_portal) {
         if (wifi_ready) {
             lv_obj_clear_flag(objects.qrcode_mqtt_portal, LV_OBJ_FLAG_HIDDEN);
-            lv_qrcode_update(objects.qrcode_mqtt_portal, ip_mqtt_url.c_str(), ip_mqtt_url.length());
+            update_qrcode_if_needed(objects.qrcode_mqtt_portal,
+                                    ip_mqtt_url.c_str(),
+                                    mqtt_portal_qr_cache_,
+                                    sizeof(mqtt_portal_qr_cache_));
         } else {
             lv_obj_add_flag(objects.qrcode_mqtt_portal, LV_OBJ_FLAG_HIDDEN);
         }

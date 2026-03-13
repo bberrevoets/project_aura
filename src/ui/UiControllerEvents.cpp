@@ -347,7 +347,10 @@ void UiController::update_web_page_panel() {
 
         if (!web_url.isEmpty()) {
             lv_obj_clear_flag(objects.web_page_qr, LV_OBJ_FLAG_HIDDEN);
-            lv_qrcode_update(objects.web_page_qr, web_url.c_str(), web_url.length());
+            update_qrcode_if_needed(objects.web_page_qr,
+                                    web_url.c_str(),
+                                    web_page_qr_cache_,
+                                    sizeof(web_page_qr_cache_));
         } else {
             lv_obj_add_flag(objects.web_page_qr, LV_OBJ_FLAG_HIDDEN);
         }

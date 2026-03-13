@@ -356,6 +356,8 @@ private:
 
     void safe_label_set_text(lv_obj_t *obj, const char *new_text);
     void safe_label_set_text_static(lv_obj_t *obj, const char *new_text);
+    void update_qrcode_if_needed(lv_obj_t *obj, const char *text, char *cache, size_t cache_size);
+    void reset_dynamic_url_caches();
     lv_color_t color_inactive();
     lv_color_t color_green();
     lv_color_t color_yellow();
@@ -763,6 +765,13 @@ private:
     int mqtt_icon_state = -1;
     int wifi_icon_state_main = -1;
     int mqtt_icon_state_main = -1;
+    static constexpr size_t kQrUrlCacheSize = 96;
+    char web_page_qr_cache_[kQrUrlCacheSize] = {};
+    char wifi_portal_qr_cache_[kQrUrlCacheSize] = {};
+    char mqtt_portal_qr_cache_[kQrUrlCacheSize] = {};
+    char theme_custom_qr_cache_[kQrUrlCacheSize] = {};
+    char dac_portal_qr_cache_[kQrUrlCacheSize] = {};
+    uint32_t dac_network_ui_signature_ = UINT32_MAX;
     bool clock_ui_dirty = true;
     bool datetime_ui_dirty = true;
     bool web_page_panel_dirty = false;

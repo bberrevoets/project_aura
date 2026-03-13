@@ -404,6 +404,7 @@ void UiController::begin() {
     boot_release_at_ms = 0;
     boot_ui_released = false;
     deferred_unload_.reset();
+    reset_dynamic_url_caches();
     wifi_icon_state = -1;
     mqtt_icon_state = -1;
     wifi_icon_state_main = -1;
@@ -860,6 +861,26 @@ void UiController::safe_label_set_text(lv_obj_t *obj, const char *new_text) {
 void UiController::safe_label_set_text_static(lv_obj_t *obj, const char *new_text) {
     if (!obj) return;
     lv_label_set_text_static(obj, new_text);
+}
+
+void UiController::update_qrcode_if_needed(lv_obj_t *obj, const char *text, char *cache, size_t cache_size) {
+    if (!obj || !text || !cache || cache_size == 0) {
+        return;
+    }
+    if (cache[0] != '\0' && strcmp(cache, text) == 0) {
+        return;
+    }
+    lv_qrcode_update(obj, text, strlen(text));
+    snprintf(cache, cache_size, "%s", text);
+}
+
+void UiController::reset_dynamic_url_caches() {
+    web_page_qr_cache_[0] = '\0';
+    wifi_portal_qr_cache_[0] = '\0';
+    mqtt_portal_qr_cache_[0] = '\0';
+    theme_custom_qr_cache_[0] = '\0';
+    dac_portal_qr_cache_[0] = '\0';
+    dac_network_ui_signature_ = UINT32_MAX;
 }
 
 void UiController::update_diag_log_ui() {
@@ -1744,7 +1765,10 @@ void UiController::update_theme_custom_info(bool presets) {
                 theme_url += "/theme";
             }
         }
-        lv_qrcode_update(objects.qrcode_theme_custom, theme_url.c_str(), theme_url.length());
+        update_qrcode_if_needed(objects.qrcode_theme_custom,
+                                theme_url.c_str(),
+                                theme_custom_qr_cache_,
+                                sizeof(theme_custom_qr_cache_));
     }
 }
 

@@ -603,6 +603,9 @@ bool MqttManager::connectClient(const SensorData &data, bool night_mode, bool al
     const uint16_t connect_socket_timeout_sec =
         connect_socket_timeout_for_attempts(mqtt_connect_attempts_);
     client_.setSocketTimeout(connect_socket_timeout_sec);
+    // PubSubClient does not stop the underlying transport for every failed connect path.
+    // Reset it explicitly before starting a new connect window to avoid stale TCP state.
+    net_.stop();
     bool ok = false;
     int last_state = MQTT_DISCONNECTED;
     for (uint8_t attempt = 0; attempt < kMqttConnectAttemptsPerWindow; ++attempt) {
@@ -634,6 +637,7 @@ bool MqttManager::connectClient(const SensorData &data, bool night_mode, bool al
     }
     client_.setSocketTimeout(kMqttDefaultSocketTimeoutSec);
     if (!ok) {
+        net_.stop();
         note_connect_failure(last_state, true);
         return false;
     }
@@ -738,6 +742,7 @@ void MqttManager::poll(const SensorData &data, bool night_mode, bool alert_blink
                 mqtt_connect_attempts_ = 0;
             }
         }
+        net_.stop();
         if (mqtt_connected_last_) {
             mqtt_connected_last_ = false;
             ui_dirty_ = true;
@@ -755,6 +760,7 @@ void MqttManager::poll(const SensorData &data, bool night_mode, bool alert_blink
             client_.disconnect();
             mqtt_fail_count_ = 0;
         }
+        net_.stop();
         if (mqtt_connected_last_) {
             mqtt_connected_last_ = false;
             ui_dirty_ = true;
@@ -836,6 +842,7 @@ void MqttManager::syncWithWifi() {
                 }
                 client_.disconnect();
             }
+            net_.stop();
             mqtt_fail_count_ = 0;
             if (!mqtt_user_enabled_) {
                 mqtt_connect_attempts_ = 0;
@@ -868,6 +875,7 @@ void MqttManager::requestReconnect() {
     if (client_.connected()) {
         client_.disconnect();
     }
+    net_.stop();
     ui_dirty_ = true;
 }
 

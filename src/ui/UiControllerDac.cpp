@@ -366,44 +366,56 @@ void UiController::update_dac_ui(uint32_t now_ms) {
     const AuraNetworkManager::WifiState wifi_state = networkManager.state();
     const bool ap_mode = wifi_enabled && (wifi_state == AuraNetworkManager::WIFI_STATE_AP_CONFIG);
     const bool wifi_connected = wifi_enabled && (wifi_state == AuraNetworkManager::WIFI_STATE_STA_CONNECTED);
-    const String local_url = networkManager.localUrl("/dac");
-    String ip_url = "http://<device-ip>/dac";
-    if (wifi_connected) {
-        const IPAddress ip = WiFi.localIP();
-        if (ip[0] != 0 || ip[1] != 0 || ip[2] != 0 || ip[3] != 0) {
-            ip_url = "http://";
-            ip_url += ip.toString();
-            ip_url += "/dac";
-        } else {
-            ip_url = local_url;
+    const uint32_t ip_raw = wifi_connected ? static_cast<uint32_t>(WiFi.localIP()) : 0U;
+    const uint32_t network_sig =
+        (wifi_enabled ? 0x80000000UL : 0UL) ^
+        (static_cast<uint32_t>(wifi_state) << 24) ^
+        ip_raw;
+    if (network_sig != dac_network_ui_signature_) {
+        dac_network_ui_signature_ = network_sig;
+
+        const String local_url = networkManager.localUrl("/dac");
+        String ip_url = "http://<device-ip>/dac";
+        if (wifi_connected) {
+            const IPAddress ip = WiFi.localIP();
+            if (ip[0] != 0 || ip[1] != 0 || ip[2] != 0 || ip[3] != 0) {
+                ip_url = "http://";
+                ip_url += ip.toString();
+                ip_url += "/dac";
+            } else {
+                ip_url = local_url;
+            }
         }
-    }
-    String dac_url;
-    if (ap_mode) {
-        dac_url = "http://192.168.4.1/dac";
-    } else if (wifi_connected) {
-        dac_url = ip_url;
-    }
-    if (objects.label_dac_qr_link) {
-        if (!dac_url.isEmpty()) {
-            safe_label_set_text(objects.label_dac_qr_link, dac_url.c_str());
-        } else {
-            safe_label_set_text(objects.label_dac_qr_link, "Enable AP or connect to Wi-Fi");
+        String dac_url;
+        if (ap_mode) {
+            dac_url = "http://192.168.4.1/dac";
+        } else if (wifi_connected) {
+            dac_url = ip_url;
         }
-    }
-    if (objects.label_dac_qr_text_ip_link) {
-        set_visible(objects.label_dac_qr_text_ip_link, wifi_connected);
-        String ip_link_text = UiText::LabelDacQrTextIpLink();
-        ip_link_text.replace("{{IP_URL}}", ip_url);
-        ip_link_text.replace("{{LOCAL_URL}}", local_url);
-        safe_label_set_text(objects.label_dac_qr_text_ip_link, ip_link_text.c_str());
-    }
-    if (objects.qrcode_dac_portal) {
-        if (!dac_url.isEmpty()) {
-            lv_obj_clear_flag(objects.qrcode_dac_portal, LV_OBJ_FLAG_HIDDEN);
-            lv_qrcode_update(objects.qrcode_dac_portal, dac_url.c_str(), dac_url.length());
-        } else {
-            lv_obj_add_flag(objects.qrcode_dac_portal, LV_OBJ_FLAG_HIDDEN);
+        if (objects.label_dac_qr_link) {
+            if (!dac_url.isEmpty()) {
+                safe_label_set_text(objects.label_dac_qr_link, dac_url.c_str());
+            } else {
+                safe_label_set_text(objects.label_dac_qr_link, "Enable AP or connect to Wi-Fi");
+            }
+        }
+        if (objects.label_dac_qr_text_ip_link) {
+            set_visible(objects.label_dac_qr_text_ip_link, wifi_connected);
+            String ip_link_text = UiText::LabelDacQrTextIpLink();
+            ip_link_text.replace("{{IP_URL}}", ip_url);
+            ip_link_text.replace("{{LOCAL_URL}}", local_url);
+            safe_label_set_text(objects.label_dac_qr_text_ip_link, ip_link_text.c_str());
+        }
+        if (objects.qrcode_dac_portal) {
+            if (!dac_url.isEmpty()) {
+                lv_obj_clear_flag(objects.qrcode_dac_portal, LV_OBJ_FLAG_HIDDEN);
+                update_qrcode_if_needed(objects.qrcode_dac_portal,
+                                        dac_url.c_str(),
+                                        dac_portal_qr_cache_,
+                                        sizeof(dac_portal_qr_cache_));
+            } else {
+                lv_obj_add_flag(objects.qrcode_dac_portal, LV_OBJ_FLAG_HIDDEN);
+            }
         }
     }
 }
