@@ -20,6 +20,7 @@
 namespace {
 
 AuraNetworkManager *g_network = nullptr;
+wifi_event_id_t g_wifi_disconnect_event_handle = 0;
 const uint32_t kInitialWifiConnectDelayMs = 1000;
 constexpr uint32_t kWifiInternalHeapMinFreeForStart = 32UL * 1024UL;
 constexpr uint32_t kWifiInternalHeapMinLargestForStart = 16UL * 1024UL;
@@ -49,6 +50,59 @@ String build_ap_ssid() {
     char ssid[20];
     snprintf(ssid, sizeof(ssid), "Aura-%06X-AP", static_cast<unsigned>(mac_suffix_24bit()));
     return String(ssid);
+}
+
+void format_wifi_event_ssid(const uint8_t *ssid, uint8_t ssid_len, char *out, size_t out_size) {
+    if (!out || out_size == 0) {
+        return;
+    }
+
+    size_t write = 0;
+    const size_t limit = ssid_len < 32 ? ssid_len : 32;
+    for (size_t i = 0; i < limit && write + 1 < out_size; ++i) {
+        const char c = static_cast<char>(ssid[i]);
+        out[write++] = (c >= 32 && c <= 126) ? c : '?';
+    }
+    out[write] = '\0';
+}
+
+void format_wifi_event_bssid(const uint8_t *bssid, char *out, size_t out_size) {
+    if (!out || out_size == 0) {
+        return;
+    }
+    snprintf(out, out_size, "%02X:%02X:%02X:%02X:%02X:%02X",
+             static_cast<unsigned>(bssid[0]),
+             static_cast<unsigned>(bssid[1]),
+             static_cast<unsigned>(bssid[2]),
+             static_cast<unsigned>(bssid[3]),
+             static_cast<unsigned>(bssid[4]),
+             static_cast<unsigned>(bssid[5]));
+}
+
+void network_wifi_event(arduino_event_id_t event, arduino_event_info_t info) {
+    if (event != ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
+        return;
+    }
+
+    const wifi_event_sta_disconnected_t &disc = info.wifi_sta_disconnected;
+    char ssid[33];
+    char bssid[18];
+    format_wifi_event_ssid(disc.ssid, disc.ssid_len, ssid, sizeof(ssid));
+    format_wifi_event_bssid(disc.bssid, bssid, sizeof(bssid));
+
+    const wifi_err_reason_t reason = static_cast<wifi_err_reason_t>(disc.reason);
+    const char *reason_name = WiFi.disconnectReasonName(reason);
+    const wl_status_t status = WiFi.status();
+
+    Logger::log(Logger::Warn, "WiFi",
+                "STA disconnected (reason=%u %s, rssi=%d dBm, status=%d, ota_busy=%s, ssid=%s, bssid=%s)",
+                static_cast<unsigned>(disc.reason),
+                (reason_name && reason_name[0] != '\0') ? reason_name : "unknown",
+                static_cast<int>(disc.rssi),
+                static_cast<int>(status),
+                WebHandlersIsOtaBusy() ? "YES" : "NO",
+                ssid[0] != '\0' ? ssid : "<empty>",
+                bssid);
 }
 
 void network_wifi_start_scan() {
@@ -110,6 +164,10 @@ void AuraNetworkManager::begin(StorageManager &storage) {
     g_network = this;
     mdns_started_ = false;
     WiFi.persistent(false);
+    if (g_wifi_disconnect_event_handle == 0) {
+        g_wifi_disconnect_event_handle =
+            WiFi.onEvent(network_wifi_event, ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
+    }
     hostname_ = build_wifi_hostname();
     if (hostname_.isEmpty()) {
         hostname_ = "aura";
