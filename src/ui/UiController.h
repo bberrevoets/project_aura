@@ -486,6 +486,7 @@ private:
     void on_confirm_cancel_event(lv_event_t *e);
     void on_night_mode_event(lv_event_t *e);
     void on_units_c_f_event(lv_event_t *e);
+    void on_time_format_toggle_event(lv_event_t *e);
     void on_units_mdy_event(lv_event_t *e);
     void on_led_indicators_event(lv_event_t *e);
     void on_alert_blink_event(lv_event_t *e);
@@ -644,6 +645,7 @@ private:
     static void on_confirm_cancel_event_cb(lv_event_t *e);
     static void on_night_mode_event_cb(lv_event_t *e);
     static void on_units_c_f_event_cb(lv_event_t *e);
+    static void on_time_format_toggle_event_cb(lv_event_t *e);
     static void on_units_mdy_event_cb(lv_event_t *e);
     static void on_led_indicators_event_cb(lv_event_t *e);
     static void on_alert_blink_event_cb(lv_event_t *e);
@@ -852,6 +854,7 @@ private:
     bool hum_offset_ui_dirty = false;
     Config::Language ui_language = Config::Language::EN;
     bool date_units_mdy = false;
+    bool time_format_24h_ = true;
     bool language_dirty = false;
     bool blink_state = true;
     uint32_t last_blink_ms = 0;

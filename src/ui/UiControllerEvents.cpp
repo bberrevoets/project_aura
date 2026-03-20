@@ -109,6 +109,7 @@ void UiController::on_confirm_ok_event_cb(lv_event_t *e) { if (instance_) instan
 void UiController::on_confirm_cancel_event_cb(lv_event_t *e) { if (instance_) instance_->on_confirm_cancel_event(e); }
 void UiController::on_night_mode_event_cb(lv_event_t *e) { if (instance_) instance_->on_night_mode_event(e); }
 void UiController::on_units_c_f_event_cb(lv_event_t *e) { if (instance_) instance_->on_units_c_f_event(e); }
+void UiController::on_time_format_toggle_event_cb(lv_event_t *e) { if (instance_) instance_->on_time_format_toggle_event(e); }
 void UiController::on_units_mdy_event_cb(lv_event_t *e) { if (instance_) instance_->on_units_mdy_event(e); }
 void UiController::on_led_indicators_event_cb(lv_event_t *e) { if (instance_) instance_->on_led_indicators_event(e); }
 void UiController::on_alert_blink_event_cb(lv_event_t *e) { if (instance_) instance_->on_alert_blink_event(e); }
@@ -742,6 +743,22 @@ void UiController::on_units_c_f_event(lv_event_t *e) {
     clock_ui_dirty = true;
     update_clock_labels();
     update_ui();
+}
+
+void UiController::on_time_format_toggle_event(lv_event_t *e) {
+    if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    lv_obj_t *btn = lv_event_get_target(e);
+    const bool use_24h = lv_obj_has_state(btn, LV_STATE_CHECKED);
+    if (use_24h == time_format_24h_) {
+        return;
+    }
+    time_format_24h_ = use_24h;
+    storage.config().time_format_24h = time_format_24h_;
+    persist_ui_config(storage, "time format");
+    clock_ui_dirty = true;
+    update_clock_labels();
 }
 
 void UiController::on_units_mdy_event(lv_event_t *e) {

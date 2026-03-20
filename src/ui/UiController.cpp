@@ -193,6 +193,44 @@ char diag_log_level_char(Logger::Level level) {
     }
 }
 
+void set_label_hidden(lv_obj_t *label, bool hidden) {
+    if (!label) {
+        return;
+    }
+    if (hidden) {
+        lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_clear_flag(label, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+void format_clock_time_label(const tm &local_tm,
+                             bool time_format_24h,
+                             char *time_buf,
+                             size_t time_buf_size,
+                             char *ampm_buf,
+                             size_t ampm_buf_size) {
+    if (!time_buf || time_buf_size == 0) {
+        return;
+    }
+    if (time_format_24h) {
+        snprintf(time_buf, time_buf_size, "%02d:%02d", local_tm.tm_hour, local_tm.tm_min);
+        if (ampm_buf && ampm_buf_size > 0) {
+            ampm_buf[0] = '\0';
+        }
+        return;
+    }
+
+    int display_hour = local_tm.tm_hour % 12;
+    if (display_hour == 0) {
+        display_hour = 12;
+    }
+    snprintf(time_buf, time_buf_size, "%02d:%02d", display_hour, local_tm.tm_min);
+    if (ampm_buf && ampm_buf_size > 0) {
+        snprintf(ampm_buf, ampm_buf_size, "%s", local_tm.tm_hour >= 12 ? "PM" : "AM");
+    }
+}
+
 bool should_show_diag_log_entry(const Logger::RecentEntry &entry) {
     if (entry.level != Logger::Error && entry.level != Logger::Warn) {
         return false;
@@ -1697,17 +1735,31 @@ const char *UiController::pressure_display_unit() const {
 
 void UiController::update_clock_labels() {
     char buf[16];
+    char ampm_buf[4] = {};
     tm local_tm = {};
     if (!timeManager.getLocalTime(local_tm)) {
         if (objects.label_time_value_1) safe_label_set_text(objects.label_time_value_1, UiText::TimeMissing());
         if (objects.label_date_value_1) safe_label_set_text(objects.label_date_value_1, UiText::DateMissing());
         if (objects.label_time_value_2) safe_label_set_text(objects.label_time_value_2, UiText::TimeMissing());
         if (objects.label_date_value_2) safe_label_set_text(objects.label_date_value_2, UiText::DateMissing());
+        if (objects.label_time_ampm_title_1) safe_label_set_text(objects.label_time_ampm_title_1, "");
+        if (objects.label_time_ampm_title_2) safe_label_set_text(objects.label_time_ampm_title_2, "");
+        set_label_hidden(objects.label_time_ampm_title_1, true);
+        set_label_hidden(objects.label_time_ampm_title_2, true);
         return;
     }
-    snprintf(buf, sizeof(buf), "%02d:%02d", local_tm.tm_hour, local_tm.tm_min);
+    format_clock_time_label(local_tm, time_format_24h_, buf, sizeof(buf), ampm_buf, sizeof(ampm_buf));
     if (objects.label_time_value_1) safe_label_set_text(objects.label_time_value_1, buf);
     if (objects.label_time_value_2) safe_label_set_text(objects.label_time_value_2, buf);
+    const bool show_ampm = !time_format_24h_;
+    if (objects.label_time_ampm_title_1) {
+        safe_label_set_text(objects.label_time_ampm_title_1, show_ampm ? ampm_buf : "");
+        set_label_hidden(objects.label_time_ampm_title_1, !show_ampm);
+    }
+    if (objects.label_time_ampm_title_2) {
+        safe_label_set_text(objects.label_time_ampm_title_2, show_ampm ? ampm_buf : "");
+        set_label_hidden(objects.label_time_ampm_title_2, !show_ampm);
+    }
     if (date_units_mdy) {
         snprintf(buf, sizeof(buf), "%02d/%02d/%04d",
                  local_tm.tm_mon + 1,
@@ -2437,6 +2489,7 @@ void UiController::init_ui_defaults() {
     }
     ui_language = storage.config().language;
     date_units_mdy = storage.config().units_mdy;
+    time_format_24h_ = storage.config().time_format_24h;
     rtc_detection_saved_mode_ = storage.config().rtc_mode;
     rtc_detection_pending_mode_ = rtc_detection_saved_mode_;
     const bool expected_units_mdy = !temp_units_c;
