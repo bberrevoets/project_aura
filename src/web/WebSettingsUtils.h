@@ -20,6 +20,7 @@ struct SettingsSnapshot {
     bool night_mode_locked = false;
     bool backlight_on = false;
     bool units_c = true;
+    bool time_format_24h = true;
     float temp_offset = 0.0f;
     float hum_offset = 0.0f;
     String display_name;

@@ -374,6 +374,7 @@ typedef struct _objects_t {
     lv_obj_t *label_btn_set_time_minutes_minus;
     lv_obj_t *btn_set_time_minutes_plus;
     lv_obj_t *label_btn_set_time_minutes_plus;
+    lv_obj_t *label_set_time_ampm_value;
     lv_obj_t *card_set_date;
     lv_obj_t *label_set_date_day_value;
     lv_obj_t *label_set_date_title;

@@ -49,6 +49,29 @@ lv_color_t rtc_runtime_status_color(const TimeManager &timeManager) {
     return lv_color_hex(0x00c853);
 }
 
+int format_hour_12h(int hour24) {
+    int display_hour = hour24 % 12;
+    if (display_hour == 0) {
+        display_hour = 12;
+    }
+    return display_hour;
+}
+
+const char *format_ampm_token(int hour24) {
+    return hour24 >= 12 ? "PM" : "AM";
+}
+
+void set_hidden_if_present(lv_obj_t *obj, bool hidden) {
+    if (!obj) {
+        return;
+    }
+    if (hidden) {
+        lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
 WebUiBridge::ApplyResult finalize_network_bridge_result(bool success,
                                                         uint16_t status_code,
                                                         const char *message) {
@@ -104,6 +127,10 @@ void UiController::update_datetime_ui() {
         lv_obj_set_style_text_color(objects.label_set_time_minutes_value, controls_enabled ? text_on : text_off,
                                     LV_PART_MAIN | LV_STATE_DEFAULT);
     }
+    if (objects.label_set_time_ampm_value) {
+        lv_obj_set_style_text_color(objects.label_set_time_ampm_value, controls_enabled ? text_on : text_off,
+                                    LV_PART_MAIN | LV_STATE_DEFAULT);
+    }
     if (objects.label_set_date_day_value) {
         lv_obj_set_style_text_color(objects.label_set_date_day_value, controls_enabled ? text_on : text_off,
                                     LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -118,10 +145,16 @@ void UiController::update_datetime_ui() {
     }
 
     char buf[8];
-    snprintf(buf, sizeof(buf), "%02d", set_hour);
+    const int display_hour = time_format_24h_ ? set_hour : format_hour_12h(set_hour);
+    snprintf(buf, sizeof(buf), "%02d", display_hour);
     if (objects.label_set_time_hours_value) safe_label_set_text(objects.label_set_time_hours_value, buf);
     snprintf(buf, sizeof(buf), "%02d", set_minute);
     if (objects.label_set_time_minutes_value) safe_label_set_text(objects.label_set_time_minutes_value, buf);
+    if (objects.label_set_time_ampm_value) {
+        const bool show_ampm = !time_format_24h_;
+        safe_label_set_text(objects.label_set_time_ampm_value, show_ampm ? format_ampm_token(set_hour) : "");
+        set_hidden_if_present(objects.label_set_time_ampm_value, !show_ampm);
+    }
 
     int max_day = TimeManager::daysInMonth(set_year, set_month);
     if (set_day > max_day) set_day = max_day;

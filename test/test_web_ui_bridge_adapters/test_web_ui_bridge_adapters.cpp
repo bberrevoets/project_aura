@@ -12,6 +12,7 @@ void test_web_ui_bridge_adapters_capture_settings_snapshot_copies_fields() {
     snapshot.night_mode_locked = true;
     snapshot.backlight_on = false;
     snapshot.units_c = false;
+    snapshot.time_format_24h = false;
     snapshot.temp_offset = 1.5f;
     snapshot.hum_offset = -2.0f;
     snapshot.display_name = "Aura";
@@ -24,6 +25,7 @@ void test_web_ui_bridge_adapters_capture_settings_snapshot_copies_fields() {
     TEST_ASSERT_TRUE(result.night_mode_locked);
     TEST_ASSERT_FALSE(result.backlight_on);
     TEST_ASSERT_FALSE(result.units_c);
+    TEST_ASSERT_FALSE(result.time_format_24h);
     TEST_ASSERT_EQUAL_FLOAT(1.5f, result.temp_offset);
     TEST_ASSERT_EQUAL_FLOAT(-2.0f, result.hum_offset);
     TEST_ASSERT_EQUAL_STRING("Aura", result.display_name.c_str());

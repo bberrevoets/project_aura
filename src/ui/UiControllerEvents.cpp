@@ -758,7 +758,9 @@ void UiController::on_time_format_toggle_event(lv_event_t *e) {
     storage.config().time_format_24h = time_format_24h_;
     persist_ui_config(storage, "time format");
     clock_ui_dirty = true;
+    datetime_ui_dirty = true;
     update_clock_labels();
+    publishWebUiSnapshot();
 }
 
 void UiController::on_units_mdy_event(lv_event_t *e) {

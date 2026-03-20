@@ -52,6 +52,7 @@ void fill_unavailable(ArduinoJson::JsonObject settings) {
     settings["night_mode_locked"] = nullptr;
     settings["backlight_on"] = nullptr;
     settings["units_c"] = nullptr;
+    settings["time_format_24h"] = nullptr;
     settings["temp_offset"] = nullptr;
     settings["hum_offset"] = nullptr;
     settings["display_name"] = nullptr;
@@ -62,6 +63,7 @@ void fill_from_snapshot(ArduinoJson::JsonObject settings, const SettingsSnapshot
     settings["night_mode_locked"] = snapshot.night_mode_locked;
     settings["backlight_on"] = snapshot.backlight_on;
     settings["units_c"] = snapshot.units_c;
+    settings["time_format_24h"] = snapshot.time_format_24h;
     settings["temp_offset"] = snapshot.temp_offset;
     settings["hum_offset"] = snapshot.hum_offset;
     settings["display_name"] = snapshot.display_name;
@@ -72,6 +74,7 @@ void fill_from_config(ArduinoJson::JsonObject settings, const Config::StoredConf
     settings["night_mode_locked"] = cfg.auto_night_enabled;
     settings["backlight_on"] = nullptr;
     settings["units_c"] = cfg.units_c;
+    settings["time_format_24h"] = cfg.time_format_24h;
     settings["temp_offset"] = cfg.temp_offset;
     settings["hum_offset"] = cfg.hum_offset;
     settings["display_name"] = cfg.web_display_name;

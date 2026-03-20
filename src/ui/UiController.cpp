@@ -409,6 +409,7 @@ WebUiBridge::Snapshot UiController::buildWebUiSnapshot() const {
     snapshot.night_mode_locked = nightModeManager.isAutoEnabled();
     snapshot.backlight_on = backlightManager.isOn();
     snapshot.units_c = temp_units_c;
+    snapshot.time_format_24h = time_format_24h_;
     snapshot.temp_offset = temp_offset;
     snapshot.hum_offset = hum_offset;
     snapshot.display_name = storage.config().web_display_name;

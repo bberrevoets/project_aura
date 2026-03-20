@@ -113,6 +113,7 @@ void test_web_settings_utils_fill_settings_json_prefers_snapshot_then_config_the
     snapshot.night_mode_locked = true;
     snapshot.backlight_on = false;
     snapshot.units_c = false;
+    snapshot.time_format_24h = false;
     snapshot.temp_offset = 1.5f;
     snapshot.hum_offset = -2.0f;
     snapshot.display_name = "Aura";
@@ -122,6 +123,7 @@ void test_web_settings_utils_fill_settings_json_prefers_snapshot_then_config_the
     TEST_ASSERT_TRUE(snapshot_doc["night_mode_locked"].as<bool>());
     TEST_ASSERT_FALSE(snapshot_doc["backlight_on"].as<bool>());
     TEST_ASSERT_FALSE(snapshot_doc["units_c"].as<bool>());
+    TEST_ASSERT_FALSE(snapshot_doc["time_format_24h"].as<bool>());
     TEST_ASSERT_EQUAL_STRING("Aura", snapshot_doc["display_name"].as<const char *>());
 
     ArduinoJson::JsonDocument cfg_doc;
@@ -129,6 +131,7 @@ void test_web_settings_utils_fill_settings_json_prefers_snapshot_then_config_the
     cfg.night_mode = false;
     cfg.auto_night_enabled = true;
     cfg.units_c = true;
+    cfg.time_format_24h = false;
     cfg.temp_offset = 0.5f;
     cfg.hum_offset = 4.0f;
     cfg.web_display_name = "Stored";
@@ -136,11 +139,13 @@ void test_web_settings_utils_fill_settings_json_prefers_snapshot_then_config_the
     TEST_ASSERT_FALSE(cfg_doc["night_mode"].as<bool>());
     TEST_ASSERT_TRUE(cfg_doc["night_mode_locked"].as<bool>());
     TEST_ASSERT_TRUE(cfg_doc["backlight_on"].isNull());
+    TEST_ASSERT_FALSE(cfg_doc["time_format_24h"].as<bool>());
     TEST_ASSERT_EQUAL_STRING("Stored", cfg_doc["display_name"].as<const char *>());
 
     ArduinoJson::JsonDocument empty_doc;
     WebSettingsUtils::fillSettingsJson(empty_doc.to<ArduinoJson::JsonObject>(), nullptr, nullptr);
     TEST_ASSERT_TRUE(empty_doc["night_mode"].isNull());
+    TEST_ASSERT_TRUE(empty_doc["time_format_24h"].isNull());
     TEST_ASSERT_TRUE(empty_doc["display_name"].isNull());
 }
 

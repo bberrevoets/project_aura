@@ -1539,6 +1539,7 @@ const settings = {
   nightMode: false, nightModeLocked: false,
   backlight: true,
   tempUnit: 'c',
+  timeFormat24h: true,
   tempOffset: 0, humOffset: 0,
   displayName: '',
 };
@@ -1882,7 +1883,11 @@ function updateHeaderClock() {
   const now = deviceClockRef
     ? new Date(deviceClockRef.epochMs + (nowMs - deviceClockRef.capturedAtMs))
     : new Date(nowMs);
-  document.getElementById('headerTime').textContent = now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', hour12:false });
+  const timeLocale = settings.timeFormat24h ? (settings.tempUnit === 'f' ? 'en-US' : 'en-GB') : 'en-US';
+  document.getElementById('headerTime').textContent = now.toLocaleTimeString(
+    timeLocale,
+    { hour:'2-digit', minute:'2-digit', hour12:!settings.timeFormat24h }
+  );
   document.getElementById('headerDate').textContent = now.toLocaleDateString(
     settings.tempUnit === 'f' ? 'en-US' : 'en-GB',
     { day:'2-digit', month:'short', year:'numeric' }
@@ -1991,6 +1996,7 @@ function applySettingsToUI(apiSettings, force, toggleOverrideKey) {
   if (!apiSettings) return;
   if (settingsSaveStatus === 'dirty' && !force) return;
   const prevTempUnit = settings.tempUnit;
+  const prevTimeFormat24h = settings.timeFormat24h;
 
   if (typeof apiSettings.night_mode === 'boolean' &&
       shouldApplyToggleFromApi('night_mode', toggleOverrideKey)) {
@@ -2002,6 +2008,7 @@ function applySettingsToUI(apiSettings, force, toggleOverrideKey) {
     settings.backlight = apiSettings.backlight_on;
   }
   if (typeof apiSettings.units_c === 'boolean') settings.tempUnit = apiSettings.units_c ? 'c' : 'f';
+  if (typeof apiSettings.time_format_24h === 'boolean') settings.timeFormat24h = apiSettings.time_format_24h;
   if (isNum(apiSettings.temp_offset)) settings.tempOffset = Number(apiSettings.temp_offset.toFixed(1));
   if (isNum(apiSettings.hum_offset)) settings.humOffset = Number(apiSettings.hum_offset.toFixed(0));
   if (typeof apiSettings.display_name === 'string') settings.displayName = apiSettings.display_name;
@@ -2016,6 +2023,8 @@ function applySettingsToUI(apiSettings, force, toggleOverrideKey) {
   updateHumOffsetDisplay();
   if (prevTempUnit !== settings.tempUnit) {
     rerenderUnitDependentViews();
+  } else if (prevTimeFormat24h !== settings.timeFormat24h) {
+    updateHeaderClock();
   }
 
   const nameInput = document.getElementById('displayNameInput');
