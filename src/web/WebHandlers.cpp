@@ -62,6 +62,10 @@ void WebHandlersRequestRestart(uint32_t delay_ms) {
     WebHandlersSupport::requestRestart(delay_ms);
 }
 
+void WebHandlersBeginRestartShutdown() {
+    WebHandlersSupport::beginRestartShutdown();
+}
+
 bool WebHandlersShouldPauseMqttConnect() {
     return WebHandlersSupport::shouldPauseMqttForTransfer();
 }

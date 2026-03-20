@@ -116,6 +116,17 @@ bool ota_window_active = false;
 bool ota_lvgl_quiesced = false;
 uint32_t ota_quiesce_due_ms = 0;
 bool network_plane_running = false;
+
+void quiesce_network_for_restart() {
+    const wifi_mode_t wifi_mode = WiFi.getMode();
+    if ((wifi_mode & (WIFI_MODE_STA | WIFI_MODE_AP)) == 0) {
+        return;
+    }
+
+    LOGI("OTA", "quiescing WiFi before restart");
+    WiFi.disconnect(true, false);
+    delay(250);
+}
 } // namespace
 
 void setup()
@@ -190,7 +201,9 @@ void loop()
 {
     if (WebHandlersConsumeRestartRequest()) {
         LOGI("OTA", "restarting now (main loop)");
+        WebHandlersBeginRestartShutdown();
         lvgl_port_prepare_restart();
+        quiesce_network_for_restart();
         delay(50);
         // Delegate restart to a dedicated Core 0 task so Core 0 is the initiator.
         // This avoids using the small IPC task stack and reduces restart races.

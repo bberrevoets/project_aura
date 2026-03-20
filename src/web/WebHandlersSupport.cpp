@@ -6,6 +6,7 @@
 
 #include "web/WebHandlersSupport.h"
 
+#include <atomic>
 #include <Update.h>
 #include <WiFi.h>
 #include <esp_wifi.h>
@@ -32,6 +33,7 @@ OtaDeferredRestart::Controller g_restart_controller;
 WebDeferredActionsState g_deferred_actions;
 WebOtaState g_ota_state;
 WebStreamState g_web_stream_state;
+std::atomic<bool> g_restart_in_progress{false};
 bool g_ota_wdt_extended = false;
 bool g_ota_wifi_ps_saved = false;
 wifi_ps_type_t g_ota_wifi_ps_prev = WIFI_PS_NONE;
@@ -204,6 +206,7 @@ void init(WebHandlerContext *context) {
     g_deferred_actions.reset();
     g_web_stream_state.reset();
     g_restart_controller.reset();
+    g_restart_in_progress.store(false, std::memory_order_release);
     ota_reset_state();
 }
 
@@ -212,7 +215,8 @@ WebHandlerContext *context() {
 }
 
 bool isOtaBusy() {
-    return g_restart_controller.is_busy(g_ota_state.isActive());
+    return g_restart_in_progress.load(std::memory_order_acquire) ||
+           g_restart_controller.is_busy(g_ota_state.isActive());
 }
 
 bool consumeRestartRequest() {
@@ -221,6 +225,10 @@ bool consumeRestartRequest() {
 
 void requestRestart(uint32_t delay_ms) {
     g_restart_controller.schedule(millis(), delay_ms);
+}
+
+void beginRestartShutdown() {
+    g_restart_in_progress.store(true, std::memory_order_release);
 }
 
 bool shouldPauseMqttForTransfer() {

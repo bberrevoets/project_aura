@@ -5,6 +5,7 @@
 // Purchase a Commercial License: see COMMERCIAL_LICENSE_SUMMARY.md
 
 #include "ui/UiController.h"
+#include "ui/BootDiagPolicy.h"
 #include "ui/UiLocalization.h"
 #include "ui/UiRenderLoop.h"
 #include "ui/UiScreenFlow.h"
@@ -1213,8 +1214,12 @@ void UiController::poll(uint32_t now) {
     if (boot_diag_active &&
         current_screen_id == SCREEN_ID_PAGE_BOOT_DIAG &&
         pending_screen_id == 0 &&
-        !boot_diag_has_error &&
-        (now - boot_diag_start_ms) >= Config::BOOT_DIAG_MS) {
+        BootDiagPolicy::shouldAutoAdvance(boot_diag_has_error,
+                                          BootDiagPolicy::sen66Pending(sensorManager.isOk(),
+                                                                       sensorManager.retryAtMs(),
+                                                                       now),
+                                          now - boot_diag_start_ms,
+                                          Config::BOOT_DIAG_MS)) {
         pending_screen_id = SCREEN_ID_PAGE_MAIN_PRO;
         boot_diag_active = false;
         data_dirty = true;

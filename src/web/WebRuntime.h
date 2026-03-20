@@ -10,6 +10,7 @@ void WebHandlersPollDeferred();
 bool WebHandlersIsOtaBusy();
 bool WebHandlersConsumeRestartRequest();
 void WebHandlersRequestRestart(uint32_t delay_ms = 0);
+void WebHandlersBeginRestartShutdown();
 bool WebHandlersShouldPauseMqttConnect();
 bool WebHandlersShouldPauseMqttPublish();
 void WebHandlersNoteMqttConnectDeferred();

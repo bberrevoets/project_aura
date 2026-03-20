@@ -34,6 +34,7 @@ WebHandlerContext *context();
 bool isOtaBusy();
 bool consumeRestartRequest();
 void requestRestart(uint32_t delay_ms);
+void beginRestartShutdown();
 bool shouldPauseMqttForTransfer();
 void noteMqttConnectDeferred();
 void noteMqttPublishDeferred();
