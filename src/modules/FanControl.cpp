@@ -326,7 +326,10 @@ void FanControl::poll(uint32_t now_ms, const SensorData *sensor_data, bool gas_w
             if (health_probe_fail_count_ >= Config::DAC_HEALTH_FAIL_THRESHOLD) {
                 handleDacFault("probe failed");
             } else {
-                LOGW("FanControl",
+                // Shared-I2C DAC probes can miss transiently; keep intermediate
+                // retries out of normal user-facing logs and only surface the
+                // final fault transition.
+                LOGD("FanControl",
                      "DAC probe failed (%u/%u)",
                      static_cast<unsigned>(health_probe_fail_count_),
                      static_cast<unsigned>(Config::DAC_HEALTH_FAIL_THRESHOLD));
