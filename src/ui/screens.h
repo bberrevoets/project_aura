@@ -882,6 +882,8 @@ typedef struct _objects_t {
     lv_obj_t *label_diag_title;
     lv_obj_t *btn_diag_back;
     lv_obj_t *label_btn_diag_back;
+    lv_obj_t *btn_diag_clear;
+    lv_obj_t *label_btn_diag_back_1;
 } objects_t;
 
 extern objects_t objects;

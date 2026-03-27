@@ -21,6 +21,7 @@ public:
 
     struct RecentEntry {
         uint32_t ms = 0;
+        uint32_t seq = 0;
         Level level = Info;
         char tag[24] = {0};
         char message[192] = {0};
@@ -36,6 +37,7 @@ public:
     static void log(Level level, const char *tag, const char *fmt, ...);
     static size_t copyRecent(RecentEntry *out, size_t max_entries);
     static size_t copyRecentAlerts(RecentEntry *out, size_t max_entries);
+    static uint32_t latestRecentAlertSeq();
 
 #ifdef UNIT_TEST
     static void resetRecentForTest();
@@ -58,6 +60,7 @@ private:
     static RecentEntry recent_alerts_[kRecentAlertCapacity];
     static size_t recent_alert_head_;
     static size_t recent_alert_count_;
+    static uint32_t recent_alert_seq_;
 };
 
 #define LOGE(tag, fmt, ...) Logger::log(Logger::Error, tag, fmt, ##__VA_ARGS__)

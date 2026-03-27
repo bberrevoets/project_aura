@@ -210,6 +210,14 @@ bool should_show_diag_log_entry(const Logger::RecentEntry &entry) {
     return true;
 }
 
+bool should_show_unacknowledged_diag_log_entry(const Logger::RecentEntry &entry,
+                                               uint32_t acknowledged_alert_seq) {
+    if (!should_show_diag_log_entry(entry)) {
+        return false;
+    }
+    return entry.seq > acknowledged_alert_seq;
+}
+
 void compact_diag_log_message(const char *src, char *dst, size_t dst_size) {
     if (!dst || dst_size == 0) {
         return;
@@ -288,11 +296,14 @@ bool append_diag_log_line(char *text,
     return true;
 }
 
-SettingsLogSeverity summarize_settings_log_severity() {
+SettingsLogSeverity summarize_settings_log_severity(uint32_t acknowledged_alert_seq) {
     Logger::RecentEntry recent[8];
     const size_t count = Logger::copyRecentAlerts(recent, sizeof(recent) / sizeof(recent[0]));
     bool has_warn = false;
     for (size_t i = 0; i < count; ++i) {
+        if (!should_show_unacknowledged_diag_log_entry(recent[i], acknowledged_alert_seq)) {
+            continue;
+        }
         if (recent[i].level == Logger::Error) {
             return SettingsLogSeverity::Error;
         }
@@ -1356,9 +1367,7 @@ void UiController::update_diag_log_ui() {
         return;
     }
 
-    if (objects.label_btn_diag_back) {
-        safe_label_set_text_static(objects.label_btn_diag_back, "BACK");
-    }
+    update_diag_texts();
 
     lv_label_set_long_mode(objects.system_logs, LV_LABEL_LONG_CLIP);
 
@@ -1371,7 +1380,7 @@ void UiController::update_diag_log_ui() {
 
     for (size_t i = count; i > 0 && emitted < UI_DIAG_LOG_MAX_LINES; --i) {
         const Logger::RecentEntry &entry = g_diag_log_snapshot[i - 1];
-        if (!should_show_diag_log_entry(entry)) {
+        if (!should_show_unacknowledged_diag_log_entry(entry, diag_ack_alert_seq_)) {
             continue;
         }
         if (!append_diag_log_line(text,
@@ -1386,7 +1395,7 @@ void UiController::update_diag_log_ui() {
     }
 
     if (emitted == 0) {
-        safe_label_set_text_static(objects.system_logs, "No warnings or errors in this boot.");
+        safe_label_set_text_static(objects.system_logs, UiText::DiagNoWarningsOrErrors());
         return;
     }
 
@@ -2235,7 +2244,7 @@ void UiController::update_settings_header() {
     lv_obj_set_style_shadow_color(objects.container_settings_header, header_col, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_opa(objects.container_settings_header, header_shadow, LV_PART_MAIN | LV_STATE_DEFAULT);
     if (objects.label_log_status || objects.log_status) {
-        const SettingsLogSeverity log_severity = summarize_settings_log_severity();
+        const SettingsLogSeverity log_severity = summarize_settings_log_severity(diag_ack_alert_seq_);
         const char *log_label = UiText::StatusOk();
         lv_color_t log_color = color_green();
         if (log_severity == SettingsLogSeverity::Error) {

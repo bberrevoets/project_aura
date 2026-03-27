@@ -93,6 +93,7 @@ void UiLocalization::updateLanguageFonts(UiController &owner) {
         objects.page_boot_diag,
         objects.page_main_pro,
         objects.page_settings,
+        objects.page_diag,
         objects.page_wifi,
         objects.page_theme,
         objects.page_clock,
@@ -149,6 +150,9 @@ void UiLocalization::refreshTextsForScreen(UiController &owner, int screen_id) {
         case SCREEN_ID_PAGE_FW_UPDATE:
             owner.update_fw_update_texts();
             break;
+        case SCREEN_ID_PAGE_DIAG:
+            owner.update_diag_texts();
+            break;
         case SCREEN_ID_PAGE_BOOT_DIAG:
             owner.update_boot_diag_texts();
             break;
@@ -176,6 +180,7 @@ void UiLocalization::refreshAllTexts(UiController &owner) {
     owner.update_backlight_texts();
     owner.update_co2_calib_texts();
     owner.update_fw_update_texts();
+    owner.update_diag_texts();
     owner.update_boot_diag_texts();
     updateLanguageFonts(owner);
 }

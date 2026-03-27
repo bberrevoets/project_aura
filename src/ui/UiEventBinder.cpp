@@ -235,6 +235,8 @@ void UiEventBinder::bindAvailableEvents(UiController &owner, int screen_id) {
         {objects.btn_hum_offset_minus, UiController::on_hum_offset_minus_cb, LV_EVENT_CLICKED},
         {objects.btn_hum_offset_plus, UiController::on_hum_offset_plus_cb, LV_EVENT_CLICKED},
         {objects.btn_diag, UiController::on_diag_event_cb, LV_EVENT_CLICKED},
+        {objects.log_status, UiController::on_diag_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_diag_clear, UiController::on_diag_clear_event_cb, LV_EVENT_CLICKED},
         {objects.btn_diag_back, UiController::on_diag_back_event_cb, LV_EVENT_CLICKED},
         {objects.btn_theme_color, UiController::on_theme_color_event_cb, LV_EVENT_CLICKED},
         {objects.btn_theme_back, UiController::on_theme_back_event_cb, LV_EVENT_CLICKED},
@@ -334,6 +336,7 @@ void UiEventBinder::bindAvailableEvents(UiController &owner, int screen_id) {
         objects.btn_wifi_back,
         objects.btn_back,
         objects.btn_dac_settings_back,
+        objects.btn_diag_clear,
     };
 
     for (lv_obj_t *btn : extended_hit_buttons) {
@@ -341,6 +344,11 @@ void UiEventBinder::bindAvailableEvents(UiController &owner, int screen_id) {
             continue;
         }
         lv_obj_set_ext_click_area(btn, kExtendedHitAreaPx);
+    }
+
+    if (objectBelongsToScreen(objects.log_status, screen_root)) {
+        lv_obj_add_flag(objects.log_status, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_set_ext_click_area(objects.log_status, kExtendedHitAreaPx);
     }
 
     auto bind_events = [screen_root](const EventBinding *bindings, size_t count) {

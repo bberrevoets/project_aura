@@ -374,6 +374,7 @@ private:
     void update_backlight_texts();
     void update_co2_calib_texts();
     void update_fw_update_texts();
+    void update_diag_texts();
     void update_boot_diag_texts();
     void update_dac_ui(uint32_t now_ms);
     void update_led_indicators();
@@ -597,6 +598,7 @@ private:
     void on_hum_offset_minus(lv_event_t *e);
     void on_hum_offset_plus(lv_event_t *e);
     void on_diag_event(lv_event_t *e);
+    void on_diag_clear_event(lv_event_t *e);
     void on_diag_back_event(lv_event_t *e);
     void on_boot_diag_continue(lv_event_t *e);
     void on_boot_diag_errors(lv_event_t *e);
@@ -756,6 +758,7 @@ private:
     static void on_hum_offset_minus_cb(lv_event_t *e);
     static void on_hum_offset_plus_cb(lv_event_t *e);
     static void on_diag_event_cb(lv_event_t *e);
+    static void on_diag_clear_event_cb(lv_event_t *e);
     static void on_diag_back_event_cb(lv_event_t *e);
     static void on_boot_diag_continue_cb(lv_event_t *e);
     static void on_boot_diag_errors_cb(lv_event_t *e);
@@ -863,6 +866,7 @@ private:
     uint32_t last_blink_ms = 0;
     uint32_t last_ui_update_ms = 0;
     uint32_t last_dac_ui_update_ms = 0;
+    uint32_t diag_ack_alert_seq_ = 0;
     uint32_t last_diag_log_update_ms = 0;
     uint32_t last_settings_header_update_ms = 0;
     uint32_t last_ui_tick_ms = 0;

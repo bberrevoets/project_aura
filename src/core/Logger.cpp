@@ -23,26 +23,34 @@ bool storeRecentInBuffer(Logger::RecentEntry *buffer,
                          Logger::Level level,
                          const char *tag,
                          const char *message,
-                         uint32_t now_ms) {
+                         uint32_t now_ms,
+                         uint32_t seq = 0,
+                         bool refresh_on_dedup = false) {
     if (!buffer || capacity == 0) {
         return false;
     }
 
     if (count > 0) {
         const size_t last_index = (head + capacity - 1) % capacity;
-        const Logger::RecentEntry &last = buffer[last_index];
+        Logger::RecentEntry &last = buffer[last_index];
         const bool same_event =
             last.level == level &&
             strcmp(last.tag, tag) == 0 &&
             strcmp(last.message, message) == 0;
         const bool within_dedup_window = (now_ms - last.ms) <= kRecentDedupWindowMs;
         if (same_event && within_dedup_window) {
+            if (refresh_on_dedup) {
+                last.ms = now_ms;
+                last.seq = seq;
+                return true;
+            }
             return false;
         }
     }
 
     Logger::RecentEntry &entry = buffer[head];
     entry.ms = now_ms;
+    entry.seq = seq;
     entry.level = level;
     strncpy(entry.tag, tag, sizeof(entry.tag) - 1);
     entry.tag[sizeof(entry.tag) - 1] = '\0';
@@ -85,6 +93,7 @@ size_t Logger::recent_count_ = 0;
 Logger::RecentEntry Logger::recent_alerts_[Logger::kRecentAlertCapacity];
 size_t Logger::recent_alert_head_ = 0;
 size_t Logger::recent_alert_count_ = 0;
+uint32_t Logger::recent_alert_seq_ = 0;
 
 void Logger::begin(HardwareSerial &serial, Level level) {
     serial_ = &serial;
@@ -204,8 +213,22 @@ void Logger::storeRecent(Level level, const char *tag, const char *message) {
     }
 
     if (SystemLogFilter::shouldStoreAlert(level, tag_buf, message_buf)) {
-        storeRecentInBuffer(recent_alerts_, kRecentAlertCapacity, recent_alert_head_, recent_alert_count_,
-                            level, tag_buf, message_buf, now_ms);
+        uint32_t next_alert_seq = recent_alert_seq_ + 1;
+        if (next_alert_seq == 0) {
+            next_alert_seq = 1;
+        }
+        if (storeRecentInBuffer(recent_alerts_,
+                                kRecentAlertCapacity,
+                                recent_alert_head_,
+                                recent_alert_count_,
+                                level,
+                                tag_buf,
+                                message_buf,
+                                now_ms,
+                                next_alert_seq,
+                                true)) {
+            recent_alert_seq_ = next_alert_seq;
+        }
     }
 }
 
@@ -218,6 +241,10 @@ size_t Logger::copyRecentAlerts(RecentEntry *out, size_t max_entries) {
                                 recent_alert_head_, recent_alert_count_, out, max_entries);
 }
 
+uint32_t Logger::latestRecentAlertSeq() {
+    return recent_alert_seq_;
+}
+
 #ifdef UNIT_TEST
 void Logger::resetRecentForTest() {
     memset(recent_, 0, sizeof(recent_));
@@ -226,5 +253,6 @@ void Logger::resetRecentForTest() {
     recent_count_ = 0;
     recent_alert_head_ = 0;
     recent_alert_count_ = 0;
+    recent_alert_seq_ = 0;
 }
 #endif

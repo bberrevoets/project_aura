@@ -292,5 +292,9 @@ inline const char *SensorInfoTitleRh() { return UiStrings::text(UiStrings::TextI
 inline const char *SensorInfoTitleAh() { return UiStrings::text(UiStrings::TextId::SensorInfoTitleAh); }
 inline const char *SensorInfoTitleDp() { return UiStrings::text(UiStrings::TextId::SensorInfoTitleDp); }
 inline const char *SensorInfoTitleMr() { return UiStrings::text(UiStrings::TextId::SensorInfoTitleMr); }
+inline const char *LabelDiagTitle() { return UiStrings::text(UiStrings::TextId::LabelDiagTitle); }
+inline const char *LabelDiagBack() { return UiStrings::text(UiStrings::TextId::LabelDiagBack); }
+inline const char *LabelDiagClearLog() { return UiStrings::text(UiStrings::TextId::LabelDiagClearLog); }
+inline const char *DiagNoWarningsOrErrors() { return UiStrings::text(UiStrings::TextId::DiagNoWarningsOrErrors); }
 
 } // namespace UiText

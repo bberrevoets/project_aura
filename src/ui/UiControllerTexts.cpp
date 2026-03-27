@@ -251,6 +251,12 @@ void UiController::update_fw_update_texts() {
     if (objects.label_fw_update) safe_label_set_text(objects.label_fw_update, UiText::LabelFwUpdateScreen());
 }
 
+void UiController::update_diag_texts() {
+    if (objects.label_diag_title) safe_label_set_text(objects.label_diag_title, UiText::LabelDiagTitle());
+    if (objects.label_btn_diag_back) safe_label_set_text(objects.label_btn_diag_back, UiText::LabelDiagBack());
+    if (objects.label_btn_diag_back_1) safe_label_set_text(objects.label_btn_diag_back_1, UiText::LabelDiagClearLog());
+}
+
 void UiController::update_boot_diag_texts() {
     if (objects.label_btn_diag_continue) safe_label_set_text(objects.label_btn_diag_continue, UiText::LabelBootTapToContinue());
     if (objects.lbl_diag_title) safe_label_set_text(objects.lbl_diag_title, UiText::LabelBootDiagTitle());

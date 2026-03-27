@@ -56,6 +56,24 @@ void test_alert_buffer_survives_info_churn() {
     TEST_ASSERT_EQUAL_STRING("link unstable", alerts[0].message);
 }
 
+
+void test_alert_duplicate_refreshes_sequence_without_adding_second_entry() {
+    Logger::log(Logger::Warn, "WiFi", "link unstable");
+
+    Logger::RecentEntry alerts[4];
+    const size_t first_count = Logger::copyRecentAlerts(alerts, 4);
+    TEST_ASSERT_EQUAL_UINT32(1, first_count);
+    const uint32_t first_seq = alerts[0].seq;
+    TEST_ASSERT_TRUE(first_seq > 0);
+
+    advanceMillis(1000);
+    Logger::log(Logger::Warn, "WiFi", "link unstable");
+
+    const size_t second_count = Logger::copyRecentAlerts(alerts, 4);
+    TEST_ASSERT_EQUAL_UINT32(1, second_count);
+    TEST_ASSERT_TRUE(alerts[0].seq > first_seq);
+    TEST_ASSERT_EQUAL_UINT32(alerts[0].seq, Logger::latestRecentAlertSeq());
+}
 void test_alert_buffer_excludes_soft_sensor_warnings() {
     Logger::log(Logger::Warn, "Sensors", "CO2 high: 1155 ppm");
     advanceMillis(1);
@@ -127,9 +145,12 @@ int main(int, char **) {
     UNITY_BEGIN();
     RUN_TEST(test_alert_buffer_keeps_only_warn_and_error);
     RUN_TEST(test_alert_buffer_survives_info_churn);
+    RUN_TEST(test_alert_duplicate_refreshes_sequence_without_adding_second_entry);
     RUN_TEST(test_alert_buffer_excludes_soft_sensor_warnings);
     RUN_TEST(test_alert_buffer_preserves_hard_errors_during_soft_sensor_warn_churn);
     RUN_TEST(test_alert_buffer_keeps_sen66_internal_faults);
     RUN_TEST(test_alert_buffer_excludes_optional_absence_but_keeps_faults);
     return UNITY_END();
 }
+
+
