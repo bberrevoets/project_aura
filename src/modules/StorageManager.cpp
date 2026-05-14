@@ -203,6 +203,7 @@ void StorageManager::clearAll() {
     LittleFS.remove(kChartsPath);
     LittleFS.remove(kDacAutoPath);
     LittleFS.remove(kDisplayThresholdsPath);
+    LittleFS.remove(kMqttCaCertPath);
 #else
     g_blob_store.clear();
 #endif
@@ -284,7 +285,8 @@ void StorageManager::clearWiFiCredentials() {
 
 void StorageManager::loadMqttSettings(String &host, uint16_t &port, String &user, String &pass,
                                       String &base_topic, String &device_name,
-                                      bool &user_enabled, bool &discovery, bool &anonymous) {
+                                      bool &user_enabled, bool &discovery, bool &anonymous,
+                                      bool &tls_enabled) {
     host = config_.mqtt_host;
     port = config_.mqtt_port;
     user = config_.mqtt_user;
@@ -294,12 +296,28 @@ void StorageManager::loadMqttSettings(String &host, uint16_t &port, String &user
     user_enabled = config_.mqtt_user_enabled;
     discovery = config_.mqtt_discovery;
     anonymous = config_.mqtt_anonymous;
+    tls_enabled = config_.mqtt_tls_enabled;
 }
 
 bool StorageManager::saveMqttSettings(const String &host, uint16_t port, const String &user,
                                       const String &pass, const String &base_topic,
-                                      const String &device_name, bool discovery, bool anonymous) {
+                                      const String &device_name, bool discovery, bool anonymous,
+                                      bool tls_enabled, const String &ca_cert_pem) {
     const Config::StoredConfig previous = config_;
+    String previous_ca;
+    const bool had_previous_ca = loadMqttCaCertificate(previous_ca);
+
+    bool ca_persisted = false;
+    if (ca_cert_pem.length() > 0) {
+        ca_persisted = saveMqttCaCertificate(ca_cert_pem);
+    } else {
+        ca_persisted = removeMqttCaCertificate();
+    }
+    if (!ca_persisted) {
+        LOGE("Storage", "failed to persist MQTT CA certificate");
+        return false;
+    }
+
     config_.mqtt_host = host;
     config_.mqtt_port = port;
     config_.mqtt_user = user;
@@ -308,12 +326,35 @@ bool StorageManager::saveMqttSettings(const String &host, uint16_t port, const S
     config_.mqtt_device_name = device_name;
     config_.mqtt_discovery = discovery;
     config_.mqtt_anonymous = anonymous;
+    config_.mqtt_tls_enabled = tls_enabled;
     if (!saveConfig(true)) {
         config_ = previous;
+        if (had_previous_ca) {
+            saveMqttCaCertificate(previous_ca);
+        } else {
+            removeMqttCaCertificate();
+        }
         LOGE("Storage", "failed to persist MQTT settings");
         return false;
     }
     return true;
+}
+
+bool StorageManager::loadMqttCaCertificate(String &out) const {
+    out = "";
+    return loadText(kMqttCaCertPath, out);
+}
+
+bool StorageManager::saveMqttCaCertificate(const String &pem) {
+    return saveTextAtomic(kMqttCaCertPath, pem);
+}
+
+bool StorageManager::removeMqttCaCertificate() {
+    String existing;
+    if (!loadText(kMqttCaCertPath, existing)) {
+        return true;
+    }
+    return removeBlob(kMqttCaCertPath);
 }
 
 void StorageManager::saveMqttEnabled(bool enabled) {
@@ -527,6 +568,7 @@ bool StorageManager::loadConfig() {
         readValue(mqtt, "enabled", loaded.mqtt_user_enabled);
         readValue(mqtt, "discovery", loaded.mqtt_discovery);
         readValue(mqtt, "anonymous", loaded.mqtt_anonymous);
+        readValue(mqtt, "tls_enabled", loaded.mqtt_tls_enabled);
         if (mqtt["anonymous"].isNull()) {
             loaded.mqtt_anonymous =
                 (loaded.mqtt_user.length() == 0 && loaded.mqtt_pass.length() == 0);
@@ -648,6 +690,7 @@ bool StorageManager::saveConfigInternal() {
     mqtt["enabled"] = config_.mqtt_user_enabled;
     mqtt["discovery"] = config_.mqtt_discovery;
     mqtt["anonymous"] = config_.mqtt_anonymous;
+    mqtt["tls_enabled"] = config_.mqtt_tls_enabled;
 
     ArduinoJson::JsonObject ui = root["ui"].to<ArduinoJson::JsonObject>();
     ui["temp_offset"] = config_.temp_offset;

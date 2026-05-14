@@ -110,6 +110,10 @@ int connect_timeout_ms_for_attempts(uint32_t failed_attempts) {
                : kMqttConnectTimeoutShortMs;
 }
 
+uint16_t default_mqtt_port(bool tls_enabled) {
+    return tls_enabled ? Config::MQTT_TLS_DEFAULT_PORT : Config::MQTT_DEFAULT_PORT;
+}
+
 void append_buffer_to_string(String &out, const char *data, size_t length) {
     if (!data || length == 0) {
         return;
@@ -275,6 +279,12 @@ uint32_t MqttManager::retryDelayMs() const {
     return retryDelayMsForAttempts(mqtt_connect_attempts_);
 }
 
+void MqttManager::copyCaCertificate(String &out) const {
+    lockCommandContext();
+    out = mqtt_ca_cert_;
+    unlockCommandContext();
+}
+
 void MqttManager::begin(StorageManager &storage,
                         AuraNetworkManager &network,
                         MqttRuntimeState &runtime_state) {
@@ -293,7 +303,10 @@ void MqttManager::loadPrefs() {
     }
     storage_->loadMqttSettings(mqtt_host_, mqtt_port_, mqtt_user_, mqtt_pass_, mqtt_base_topic_,
                                mqtt_device_name_, mqtt_user_enabled_, mqtt_discovery_,
-                               mqtt_anonymous_);
+                               mqtt_anonymous_, mqtt_tls_enabled_);
+    if (!storage_->loadMqttCaCertificate(mqtt_ca_cert_)) {
+        mqtt_ca_cert_ = "";
+    }
     mqtt_enabled_ = mqtt_user_enabled_;
     if (mqtt_base_topic_.endsWith("/")) {
         mqtt_base_topic_.remove(mqtt_base_topic_.length() - 1);
@@ -305,7 +318,7 @@ void MqttManager::loadPrefs() {
         mqtt_device_name_ = Config::MQTT_DEFAULT_NAME;
     }
     if (mqtt_port_ == 0) {
-        mqtt_port_ = Config::MQTT_DEFAULT_PORT;
+        mqtt_port_ = default_mqtt_port(mqtt_tls_enabled_);
     }
     refreshHostBuffer();
 }
@@ -380,6 +393,8 @@ void MqttManager::destroyClient() {
     mqtt_manual_stop_ = false;
     mqtt_event_topic_.clear();
     mqtt_event_payload_.clear();
+    mqtt_active_ca_cert_ = "";
+    mqtt_active_common_name_ = "";
 }
 
 bool MqttManager::connectTransport(const char *client_id, const char *will_topic) {
@@ -388,7 +403,17 @@ bool MqttManager::connectTransport(const char *client_id, const char *will_topic
     esp_mqtt_client_config_t config = {};
     config.broker.address.hostname = mqtt_broker_endpoint_buf_;
     config.broker.address.port = mqtt_port_;
-    config.broker.address.transport = MQTT_TRANSPORT_OVER_TCP;
+    config.broker.address.transport = mqtt_tls_enabled_ ? MQTT_TRANSPORT_OVER_SSL
+                                                        : MQTT_TRANSPORT_OVER_TCP;
+    if (mqtt_tls_enabled_) {
+        mqtt_active_ca_cert_ = mqtt_ca_cert_;
+        config.broker.verification.certificate = mqtt_active_ca_cert_.c_str();
+        config.broker.verification.certificate_len = mqtt_active_ca_cert_.length() + 1;
+        if (strcmp(mqtt_broker_endpoint_buf_, mqtt_host_buf_) != 0) {
+            mqtt_active_common_name_ = mqtt_host_buf_;
+            config.broker.verification.common_name = mqtt_active_common_name_.c_str();
+        }
+    }
     config.credentials.client_id = client_id;
     if (!mqtt_anonymous_ && mqtt_user_.length()) {
         config.credentials.username = mqtt_user_.c_str();
@@ -408,6 +433,8 @@ bool MqttManager::connectTransport(const char *client_id, const char *will_topic
     client_ = esp_mqtt_client_init(&config);
     if (!client_) {
         LOGW("MQTT", "esp_mqtt_client_init failed");
+        mqtt_active_ca_cert_ = "";
+        mqtt_active_common_name_ = "";
         return false;
     }
     if (esp_mqtt_client_register_event(client_, MQTT_EVENT_ANY,
@@ -1159,6 +1186,11 @@ bool MqttManager::connectClient() {
         note_connect_failure(-1, false);
         return false;
     }
+    if (mqtt_tls_enabled_ && mqtt_ca_cert_.isEmpty()) {
+        LOGW("MQTT", "TLS enabled but CA certificate is missing, connection disabled");
+        note_connect_failure(-1, false);
+        return false;
+    }
 
     // Diagnostics: check network state before MQTT connect.
     bool network_ready = network_ && network_->isEnabled() && network_->isConnected();
@@ -1176,9 +1208,10 @@ bool MqttManager::connectClient() {
     }
 
     Logger::log(Logger::Info, "MQTT",
-                "connecting to %s:%u (NetworkMgr=%s, WiFi.status=%d, IP=%s, RSSI=%ld dBm)",
+                "connecting to %s:%u via %s (NetworkMgr=%s, WiFi.status=%d, IP=%s, RSSI=%ld dBm)",
                 broker_target.c_str(),
                 static_cast<unsigned>(mqtt_port_),
+                mqtt_tls_enabled_ ? "TLS" : "TCP",
                 network_ready ? "ready" : "NOT READY",
                 static_cast<int>(wifi_status),
                 local_ip.toString().c_str(),
@@ -1574,6 +1607,10 @@ void MqttManager::poll(MqttRuntimeState &runtime_state) {
     if (!mqtt_enabled_) {
         mqtt_connect_deferred_by_web_ = false;
         mqtt_publish_deferred_by_web_ = false;
+        if (mqtt_tls_waiting_for_time_) {
+            mqtt_tls_waiting_for_time_ = false;
+            ui_dirty_ = true;
+        }
         if (mqtt_connected_) {
             char topic[kTopicBufferSize];
             build_availability_topic(topic, sizeof(topic), mqtt_base_topic_);
@@ -1595,6 +1632,10 @@ void MqttManager::poll(MqttRuntimeState &runtime_state) {
     if (!network_ || !network_->isConnected()) {
         mqtt_connect_deferred_by_web_ = false;
         mqtt_publish_deferred_by_web_ = false;
+        if (mqtt_tls_waiting_for_time_) {
+            mqtt_tls_waiting_for_time_ = false;
+            ui_dirty_ = true;
+        }
         if (mqtt_connected_) {
             LOGW("MQTT", "network unavailable, disconnecting gracefully");
             char topic[kTopicBufferSize];
@@ -1626,6 +1667,22 @@ void MqttManager::poll(MqttRuntimeState &runtime_state) {
         mqtt_publish_deferred_by_web_ = false;
         if (mqtt_connecting_) {
             return;
+        }
+        if (mqtt_tls_enabled_ &&
+            !mqtt_system_time_valid_.load(std::memory_order_acquire)) {
+            mqtt_connect_deferred_by_web_ = false;
+            if (!mqtt_tls_waiting_for_time_) {
+                mqtt_tls_waiting_for_time_ = true;
+                ui_dirty_ = true;
+                LOGI("MQTT", "TLS waiting for valid system time");
+            }
+            return;
+        }
+        if (mqtt_tls_waiting_for_time_) {
+            mqtt_tls_waiting_for_time_ = false;
+            mqtt_last_attempt_ms_ = 0;
+            ui_dirty_ = true;
+            LOGI("MQTT", "system time valid, resuming TLS connection");
         }
         uint32_t now = millis();
         uint32_t retry_delay = retryDelayMsForAttempts(mqtt_connect_attempts_);
@@ -1688,6 +1745,9 @@ void MqttManager::syncWithWifi() {
             mqtt_last_attempt_ms_ = 0;
             mqtt_last_error_rc_.store(0, std::memory_order_release);
         } else {
+            if (mqtt_tls_waiting_for_time_) {
+                mqtt_tls_waiting_for_time_ = false;
+            }
             if (mqtt_connected_) {
                 if (wifi_ready) {
                     char topic[kTopicBufferSize];
@@ -1713,6 +1773,7 @@ void MqttManager::requestReconnect() {
     mqtt_connect_deferred_by_web_ = false;
     mqtt_publish_deferred_by_web_ = false;
     mqtt_discovery_sent_ = false;
+    mqtt_tls_waiting_for_time_ = false;
     mqtt_last_attempt_ms_ = 0;
     mqtt_mdns_cache_valid_ = false;
     mqtt_last_error_rc_.store(0, std::memory_order_release);
@@ -1731,6 +1792,7 @@ void MqttManager::setUserEnabled(bool enabled) {
     mqtt_publish_deferred_by_web_ = false;
     mqtt_discovery_sent_ = false;
     mqtt_connect_attempts_ = 0;
+    mqtt_tls_waiting_for_time_ = false;
     if (storage_) {
         storage_->saveMqttEnabled(mqtt_user_enabled_);
     }
@@ -1743,13 +1805,16 @@ void MqttManager::applySavedSettings(const String &host,
                                      const String &base_topic,
                                      const String &device_name,
                                      bool discovery,
-                                     bool anonymous) {
+                                     bool anonymous,
+                                     bool tls_enabled,
+                                     const String &ca_cert_pem) {
     String next_host = host;
-    uint16_t next_port = port == 0 ? Config::MQTT_DEFAULT_PORT : port;
+    uint16_t next_port = port == 0 ? default_mqtt_port(tls_enabled) : port;
     String next_user = user;
     String next_pass = pass;
     String next_base_topic = base_topic;
     String next_device_name = device_name;
+    String next_ca_cert = ca_cert_pem;
 
     if (next_base_topic.endsWith("/")) {
         next_base_topic.remove(next_base_topic.length() - 1);
@@ -1770,12 +1835,15 @@ void MqttManager::applySavedSettings(const String &host,
     mqtt_device_name_ = next_device_name;
     mqtt_discovery_ = discovery;
     mqtt_anonymous_ = anonymous;
+    mqtt_tls_enabled_ = tls_enabled;
+    mqtt_ca_cert_ = next_ca_cert;
     unlockCommandContext();
 
     mqtt_discovery_sent_ = false;
     mqtt_connect_attempts_ = 0;
     mqtt_fail_count_ = 0;
     mqtt_last_attempt_ms_ = 0;
+    mqtt_tls_waiting_for_time_ = false;
     mqtt_last_error_rc_.store(0, std::memory_order_release);
     mqtt_mdns_cache_valid_ = false;
     mqtt_connect_deferred_by_web_ = false;

@@ -23,8 +23,10 @@ struct SaveInput {
     String pass;
     String device_name;
     String base_topic;
+    String ca_cert_pem;
     bool anonymous = false;
     bool discovery = false;
+    bool tls_enabled = false;
 };
 
 struct SaveUpdate {
@@ -34,8 +36,10 @@ struct SaveUpdate {
     String pass;
     String base_topic;
     String device_name;
+    String ca_cert_pem;
     bool discovery = true;
     bool anonymous = false;
+    bool tls_enabled = false;
 };
 
 struct ParseResult {

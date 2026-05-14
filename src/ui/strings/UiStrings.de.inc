@@ -39,6 +39,7 @@
     "Wiederhole...",
     "Später neuer Versuch",
     "Verbinde...",
+    "Warte auf Zeit...",
     "AN / AUS",
     "Alle 6h",
     "http://192.168.4.1/wifi",

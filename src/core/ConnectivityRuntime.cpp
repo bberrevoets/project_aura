@@ -116,6 +116,8 @@ void ConnectivityRuntime::update(AuraNetworkManager &networkManager, MqttManager
     snapshot_.mqtt_base_topic = mqttManager.baseTopic();
     snapshot_.mqtt_discovery = mqttManager.discoveryEnabled();
     snapshot_.mqtt_anonymous = mqttManager.isAnonymous();
+    snapshot_.mqtt_tls_enabled = mqttManager.tlsEnabled();
+    snapshot_.mqtt_tls_waiting_for_time = mqttManager.isTlsWaitingForTime();
     unlock();
 }
 

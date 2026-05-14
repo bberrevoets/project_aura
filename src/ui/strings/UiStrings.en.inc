@@ -39,6 +39,7 @@
     "Retrying...",
     "Delayed retry",
     "Connecting...",
+    "Waiting for time...",
     "ON / OFF",
     "Every 6h",
     "http://192.168.4.1/wifi",

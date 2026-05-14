@@ -158,7 +158,9 @@ void NetworkCommandQueue::processAll(AuraNetworkManager &networkManager,
                                        mqtt_settings_update.base_topic,
                                        mqtt_settings_update.device_name,
                                        mqtt_settings_update.discovery,
-                                       mqtt_settings_update.anonymous);
+                                       mqtt_settings_update.anonymous,
+                                       mqtt_settings_update.tls_enabled,
+                                       mqtt_settings_update.ca_cert_pem);
     }
 
     if (processed) {

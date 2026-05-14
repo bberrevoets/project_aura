@@ -53,6 +53,7 @@ inline const char *MqttStatusError() { return UiStrings::text(UiStrings::TextId:
 inline const char *MqttStatusRetry10m() { return UiStrings::text(UiStrings::TextId::MqttStatusRetry10m); }
 inline const char *MqttStatusRetry1h() { return UiStrings::text(UiStrings::TextId::MqttStatusRetry1h); }
 inline const char *MqttStatusConnecting() { return UiStrings::text(UiStrings::TextId::MqttStatusConnecting); }
+inline const char *MqttStatusWaitingTime() { return UiStrings::text(UiStrings::TextId::MqttStatusWaitingTime); }
 
 inline const char *MqttToggleLabel() { return UiStrings::text(UiStrings::TextId::MqttToggleLabel); }
 inline const char *NtpInterval() { return UiStrings::text(UiStrings::TextId::NtpInterval); }

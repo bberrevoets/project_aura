@@ -900,6 +900,7 @@ static const char kMqttPageTemplate[] PROGMEM = R"HTML(
         /* Динамические классы статуса будут вставлены сервером */
         .status-connected { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
         .status-disconnected { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+        .status-error { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
 
         form { display: flex; flex-direction: column; }
         .form-group { margin-bottom: 16px; }
@@ -909,13 +910,18 @@ static const char kMqttPageTemplate[] PROGMEM = R"HTML(
             letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 6px; margin-left: 4px;
         }
 
-        input[type="text"], input[type="number"], input[type="password"] {
+        input[type="text"], input[type="number"], input[type="password"], textarea {
             width: 100%; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border);
             border-radius: 14px; padding: 14px; color: white; font-size: 15px;
             transition: all 0.2s; outline: none;
         }
 
-        input:focus { border-color: var(--primary); }
+        textarea {
+            min-height: 180px; resize: vertical; font-family: 'Courier New', monospace;
+            font-size: 12px; line-height: 1.45; white-space: pre; overflow-wrap: normal;
+        }
+
+        input:focus, textarea:focus { border-color: var(--primary); }
         input:disabled { opacity: 0.5; cursor: not-allowed; background: rgba(15, 23, 42, 0.4); }
 
         .input-container { position: relative; }
@@ -943,6 +949,10 @@ static const char kMqttPageTemplate[] PROGMEM = R"HTML(
 
         .checkbox-label-text {
             font-size: 14px; font-weight: 600; color: var(--text); cursor: pointer;
+        }
+
+        .field-hint {
+            font-size: 11px; color: var(--text-dim); line-height: 1.45; margin: -6px 4px 14px;
         }
 
         .form-row { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
@@ -1021,9 +1031,24 @@ static const char kMqttPageTemplate[] PROGMEM = R"HTML(
                     </div>
                     <div class="form-group">
                         <label for="port">Port</label>
-                        <input type="number" name="port" id="port" value="{{MQTT_PORT}}" placeholder="1883" min="1" max="65535" required>
+                        <input type="number" name="port" id="port" value="{{MQTT_PORT}}" placeholder="1883" min="1" max="65535">
                     </div>
                 </div>
+
+                <div class="section-title">Security</div>
+
+                <div class="form-group">
+                    <label class="checkbox-wrapper" for="tls">
+                        <input type="checkbox" id="tls" name="tls" {{TLS_CHECKED}} onchange="updateTlsFields(true)">
+                        <span class="checkbox-label-text">Use TLS / SSL</span>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label for="ca_cert">CA Certificate (PEM)</label>
+                    <textarea name="ca_cert" id="ca_cert" placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----">{{MQTT_CA_CERT}}</textarea>
+                </div>
+                <div class="field-hint">Required for TLS brokers such as HiveMQ Cloud. Client certificates and private keys are not used.</div>
 
                 <div class="section-title">Authentication</div>
 
@@ -1092,6 +1117,19 @@ static const char kMqttPageTemplate[] PROGMEM = R"HTML(
             passField.disabled = isAnonymous;
         }
 
+        function updateTlsFields(applyDefaultPort) {
+            var checkbox = document.getElementById('tls');
+            var portField = document.getElementById('port');
+            var caField = document.getElementById('ca_cert');
+            var isTls = checkbox.checked;
+
+            if (applyDefaultPort && (portField.value === '' || portField.value === '1883' || portField.value === '8883')) {
+                portField.value = isTls ? '8883' : '1883';
+            }
+            portField.placeholder = isTls ? '8883' : '1883';
+            caField.required = isTls;
+        }
+
         function togglePass() {
             var x = document.getElementById("pass");
             var svg = document.getElementById("eye-svg");
@@ -1106,21 +1144,30 @@ static const char kMqttPageTemplate[] PROGMEM = R"HTML(
         }
 
         updateAuthFields();
+        updateTlsFields(false);
 
         document.getElementById('mqtt-form').addEventListener('submit', function(e) {
             var anonymous = document.getElementById('anonymous').checked;
             var user = document.getElementById('user').value;
             var pass = document.getElementById('pass').value;
+            var tls = document.getElementById('tls').checked;
+            var caCert = document.getElementById('ca_cert').value;
 
             if (!anonymous && (user === '' || pass === '')) {
                 e.preventDefault();
                 alert('Username and password are required when anonymous mode is disabled');
                 return false;
             }
+            if (tls && caCert.trim() === '') {
+                e.preventDefault();
+                alert('CA certificate is required when TLS is enabled');
+                return false;
+            }
         });
 
         document.addEventListener('DOMContentLoaded', function() {
             updateAuthFields();
+            updateTlsFields(false);
         });
     </script>
 </body>

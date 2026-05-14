@@ -169,6 +169,7 @@ void AppInit::initManagersAndConfig(Context &ctx, StorageManager::BootAction boo
     ctx.themeManager.loadFromPrefs(ctx.storage);
 
     ctx.timeManager.updateWifiState(ctx.networkManager.isEnabled(), ctx.networkManager.isConnected());
+    ctx.mqttManager.setSystemTimeValid(ctx.timeManager.isSystemTimeValid());
     ctx.mqttManager.syncWithWifi();
     const FanControl::Snapshot fan_snapshot = ctx.fanControl.snapshot();
     ctx.mqttRuntimeState.update(ctx.currentData,
@@ -190,6 +191,7 @@ esp_panel::board::Board *AppInit::initBoardAndPeripherals(Context &ctx) {
     }
     ctx.backlightManager.attachBacklight(board->getBacklight());
     ctx.timeManager.initRtc();
+    ctx.mqttManager.setSystemTimeValid(ctx.timeManager.isSystemTimeValid());
     ctx.pressureHistory.load(ctx.storage, ctx.currentData);
     ctx.chartsHistory.load(ctx.storage);
     ctx.uiController.apply_auto_night_now();

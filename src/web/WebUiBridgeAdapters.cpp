@@ -64,8 +64,10 @@ WebUiBridge::MqttSaveUpdate toUiMqttSaveUpdate(const WebMqttSaveUtils::SaveUpdat
     ui_update.pass = update.pass;
     ui_update.base_topic = update.base_topic;
     ui_update.device_name = update.device_name;
+    ui_update.ca_cert_pem = update.ca_cert_pem;
     ui_update.discovery = update.discovery;
     ui_update.anonymous = update.anonymous;
+    ui_update.tls_enabled = update.tls_enabled;
     return ui_update;
 }
 

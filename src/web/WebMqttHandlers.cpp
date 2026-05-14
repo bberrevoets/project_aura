@@ -8,6 +8,7 @@
 
 #include "config/AppConfig.h"
 #include "core/ConnectivityRuntime.h"
+#include "modules/MqttRuntime.h"
 #include "web/WebMqttPage.h"
 #include "web/WebMqttSaveUtils.h"
 #include "web/WebTemplates.h"
@@ -47,13 +48,21 @@ void handleRoot(WebHandlerContext &context,
     page_data.device_id = connectivity.mqtt_device_id;
     page_data.device_ip = connectivity.wifi_connected ? connectivity.sta_ip : String("---");
     page_data.host = connectivity.mqtt_host;
-    page_data.port = connectivity.mqtt_port == 0 ? Config::MQTT_DEFAULT_PORT : connectivity.mqtt_port;
+    page_data.port = connectivity.mqtt_port == 0
+                         ? (connectivity.mqtt_tls_enabled ? Config::MQTT_TLS_DEFAULT_PORT
+                                                           : Config::MQTT_DEFAULT_PORT)
+                         : connectivity.mqtt_port;
     page_data.user = connectivity.mqtt_user;
     page_data.pass = connectivity.mqtt_pass;
     page_data.device_name = connectivity.mqtt_device_name;
     page_data.base_topic = connectivity.mqtt_base_topic;
+    if (context.mqtt_runtime) {
+        context.mqtt_runtime->copyCaCertificate(page_data.ca_cert_pem);
+    }
     page_data.anonymous = connectivity.mqtt_anonymous;
     page_data.discovery = connectivity.mqtt_discovery;
+    page_data.tls_enabled = connectivity.mqtt_tls_enabled;
+    page_data.tls_waiting_for_time = connectivity.mqtt_tls_waiting_for_time;
 
     const String html = WebMqttPage::renderHtml(FPSTR(WebTemplates::kMqttPageTemplate), page_data);
     WebResponseUtils::sendHtmlStreamResilient(*context.server, html, stream_context);
@@ -92,8 +101,10 @@ void handleSave(WebHandlerContext &context,
     save_input.pass = server.arg("pass");
     save_input.device_name = server.arg("name");
     save_input.base_topic = server.arg("topic");
+    save_input.ca_cert_pem = server.arg("ca_cert");
     save_input.anonymous = server.hasArg("anonymous");
     save_input.discovery = server.hasArg("discovery");
+    save_input.tls_enabled = server.hasArg("tls");
 
     WebMqttSaveUtils::CurrentCredentials current_credentials{};
     current_credentials.user = connectivity.mqtt_user;

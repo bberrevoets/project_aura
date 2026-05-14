@@ -39,6 +39,7 @@
     "Nouvel essai...",
     "Nouvel essai differe",
     "Connexion...",
+    "Attente heure...",
     "ON / OFF",
     "Toutes les 6h",
     "http://192.168.4.1/wifi",

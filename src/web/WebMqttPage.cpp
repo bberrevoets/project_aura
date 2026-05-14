@@ -74,6 +74,9 @@ StatusView statusFor(const PageData &data) {
     if (data.mqtt_connected) {
         return {"Connected", "status-connected"};
     }
+    if (data.tls_waiting_for_time) {
+        return {"Waiting for time", "status-error"};
+    }
     if (data.mqtt_retry_stage == 0) {
         return {"Connecting", "status-error"};
     }
@@ -93,16 +96,23 @@ String renderHtml(const String &html_template, const PageData &data) {
     html = replace_placeholder(html, "{{DEVICE_IP}}", WebTextUtils::htmlEscape(data.device_ip));
     html = replace_placeholder(html, "{{MQTT_HOST}}", WebTextUtils::htmlEscape(data.host));
     html = replace_placeholder(html, "{{MQTT_PORT}}",
-                               uint_to_string(data.port == 0 ? Config::MQTT_DEFAULT_PORT
-                                                             : data.port));
+                               uint_to_string(data.port == 0
+                                                  ? (data.tls_enabled
+                                                         ? Config::MQTT_TLS_DEFAULT_PORT
+                                                         : Config::MQTT_DEFAULT_PORT)
+                                                  : data.port));
     html = replace_placeholder(html, "{{MQTT_USER}}", WebTextUtils::htmlEscape(data.user));
     html = replace_placeholder(html, "{{MQTT_PASS}}", WebTextUtils::htmlEscape(data.pass));
     html = replace_placeholder(html, "{{MQTT_NAME}}", WebTextUtils::htmlEscape(data.device_name));
     html = replace_placeholder(html, "{{MQTT_TOPIC}}", WebTextUtils::htmlEscape(data.base_topic));
+    html = replace_placeholder(html, "{{MQTT_CA_CERT}}",
+                               WebTextUtils::htmlEscape(data.ca_cert_pem));
     html = replace_placeholder(html, "{{ANONYMOUS_CHECKED}}",
                                data.anonymous ? String("checked") : String(""));
     html = replace_placeholder(html, "{{DISCOVERY_CHECKED}}",
                                data.discovery ? String("checked") : String(""));
+    html = replace_placeholder(html, "{{TLS_CHECKED}}",
+                               data.tls_enabled ? String("checked") : String(""));
 
     return html;
 }

@@ -39,6 +39,7 @@
     "Opnieuw proberen...",
     "Vertraagde nieuwe poging",
     "Verbinden...",
+    "Wacht op tijd...",
     "AAN / UIT",
     "Elke 6h",
     "http://192.168.4.1/wifi",

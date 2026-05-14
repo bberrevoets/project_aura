@@ -40,7 +40,9 @@ public:
                            const String &base_topic,
                            const String &device_name,
                            bool discovery,
-                           bool anonymous);
+                           bool anonymous,
+                           bool tls_enabled,
+                           const String &ca_cert_pem);
 
     bool isUserEnabled() const { return mqtt_user_enabled_; }
     bool isEnabled() const { return mqtt_enabled_; }
@@ -63,6 +65,13 @@ public:
     const String &deviceId() const { return mqtt_device_id_; }
     bool discoveryEnabled() const { return mqtt_discovery_; }
     bool isAnonymous() const { return mqtt_anonymous_; }
+    bool tlsEnabled() const { return mqtt_tls_enabled_; }
+    bool hasCaCertificate() const { return mqtt_ca_cert_.length() > 0; }
+    void copyCaCertificate(String &out) const override;
+    bool isTlsWaitingForTime() const { return mqtt_tls_waiting_for_time_; }
+    void setSystemTimeValid(bool valid) {
+        mqtt_system_time_valid_.store(valid, std::memory_order_release);
+    }
 
     bool &userEnabledRef() { return mqtt_user_enabled_; }
     String &hostRef() { return mqtt_host_; }
@@ -162,6 +171,7 @@ private:
     bool mqtt_enabled_ = true;
     bool mqtt_discovery_ = true;
     bool mqtt_anonymous_ = false;
+    bool mqtt_tls_enabled_ = false;
     bool mqtt_discovery_sent_ = false;
     uint32_t mqtt_last_attempt_ms_ = 0;
     uint32_t mqtt_last_publish_ms_ = 0;
@@ -177,9 +187,14 @@ private:
     bool mqtt_ota_suspended_ = false;
     bool mqtt_manual_stop_ = false;
     bool mqtt_client_needs_destroy_ = false;
+    bool mqtt_tls_waiting_for_time_ = false;
+    std::atomic<bool> mqtt_system_time_valid_{false};
     // MQTT_EVENT_DATA may arrive in chunks; these buffers belong only to the esp-mqtt event task.
     String mqtt_event_topic_;
     String mqtt_event_payload_;
+    String mqtt_ca_cert_;
+    String mqtt_active_ca_cert_;
+    String mqtt_active_common_name_;
     String mqtt_mdns_cache_host_;
     IPAddress mqtt_mdns_cache_ip_;
     uint32_t mqtt_mdns_cache_ts_ms_ = 0;

@@ -52,6 +52,8 @@ struct ConnectivityRuntimeSnapshot {
     String mqtt_base_topic;
     bool mqtt_discovery = false;
     bool mqtt_anonymous = false;
+    bool mqtt_tls_enabled = false;
+    bool mqtt_tls_waiting_for_time = false;
 };
 
 class ConnectivityRuntime {

@@ -35,11 +35,15 @@ public:
 
     void loadMqttSettings(String &host, uint16_t &port, String &user, String &pass,
                           String &base_topic, String &device_name,
-                          bool &user_enabled, bool &discovery, bool &anonymous);
+                          bool &user_enabled, bool &discovery, bool &anonymous,
+                          bool &tls_enabled);
     bool saveMqttSettings(const String &host, uint16_t port, const String &user, const String &pass,
                           const String &base_topic, const String &device_name, bool discovery,
-                          bool anonymous);
+                          bool anonymous, bool tls_enabled, const String &ca_cert_pem);
     void saveMqttEnabled(bool enabled);
+    bool loadMqttCaCertificate(String &out) const;
+    bool saveMqttCaCertificate(const String &pem);
+    bool removeMqttCaCertificate();
     bool saveRtcMode(Config::RtcMode mode);
     bool saveDacAutoState(bool auto_mode, bool auto_armed);
 
@@ -64,6 +68,7 @@ public:
     static constexpr const char *kChartsPath = "/charts.bin";
     static constexpr const char *kDacAutoPath = "/dac_auto.json";
     static constexpr const char *kDisplayThresholdsPath = "/display_thresholds.json";
+    static constexpr const char *kMqttCaCertPath = "/mqtt_ca.pem";
 
 private:
     bool loadConfig();

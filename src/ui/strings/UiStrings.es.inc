@@ -39,6 +39,7 @@
     "Reintentando...",
     "Reintento tardio",
     "Conectando...",
+    "Esperando hora...",
     "ON / OFF",
     "Cada 6h",
     "http://192.168.4.1/wifi",

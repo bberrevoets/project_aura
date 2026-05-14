@@ -53,6 +53,11 @@ bool ends_with_char(const String &value, char ch) {
     return raw && raw[len - 1] == ch;
 }
 
+bool contains_text(const String &value, const char *needle) {
+    const char *raw = value.c_str();
+    return raw && needle && strstr(raw, needle) != nullptr;
+}
+
 void remove_last_char(String &value) {
     if (value.length() == 0) {
         return;
@@ -62,6 +67,29 @@ void remove_last_char(String &value) {
 #else
     value.remove(value.length() - 1);
 #endif
+}
+
+String normalize_pem_text(const String &value) {
+    String normalized;
+    normalized.reserve(value.length());
+
+    const char *raw = value.c_str();
+    if (!raw) {
+        return normalized;
+    }
+
+    for (size_t i = 0; raw[i] != '\0'; ++i) {
+        if (raw[i] == '\r') {
+            if (raw[i + 1] == '\n') {
+                continue;
+            }
+            normalized += '\n';
+        } else {
+            normalized += raw[i];
+        }
+    }
+
+    return trim_copy(normalized);
 }
 
 } // namespace
@@ -75,8 +103,10 @@ ParseResult parseSaveInput(const SaveInput &input, const CurrentCredentials &cur
     update.pass = input.pass;
     update.device_name = input.device_name;
     update.base_topic = input.base_topic;
+    update.ca_cert_pem = normalize_pem_text(input.ca_cert_pem);
     update.discovery = input.discovery;
     update.anonymous = input.anonymous;
+    update.tls_enabled = input.tls_enabled;
 
     update.host = trim_copy(update.host);
     const String port_str = trim_copy(input.port);
@@ -117,7 +147,29 @@ ParseResult parseSaveInput(const SaveInput &input, const CurrentCredentials &cur
         return result;
     }
 
-    if (!WebInputValidation::parsePortOrDefault(port_str, Config::MQTT_DEFAULT_PORT, update.port)) {
+    if (update.ca_cert_pem.length() > Config::MQTT_CA_CERT_MAX_BYTES) {
+        result.status_code = 400;
+        result.error_message = "CA certificate is too large";
+        return result;
+    }
+
+    if (update.tls_enabled) {
+        if (string_is_empty(update.ca_cert_pem)) {
+            result.status_code = 400;
+            result.error_message = "CA certificate is required when TLS is enabled";
+            return result;
+        }
+        if (!contains_text(update.ca_cert_pem, "-----BEGIN CERTIFICATE-----") ||
+            !contains_text(update.ca_cert_pem, "-----END CERTIFICATE-----")) {
+            result.status_code = 400;
+            result.error_message = "CA certificate must be a PEM certificate";
+            return result;
+        }
+    }
+
+    const uint16_t default_port = update.tls_enabled ? Config::MQTT_TLS_DEFAULT_PORT
+                                                     : Config::MQTT_DEFAULT_PORT;
+    if (!WebInputValidation::parsePortOrDefault(port_str, default_port, update.port)) {
         result.status_code = 400;
         result.error_message = "Port must be in range 1-65535";
         return result;

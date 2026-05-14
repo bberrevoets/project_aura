@@ -88,6 +88,65 @@ void test_web_mqtt_save_utils_parse_uses_default_port_when_empty() {
 
     TEST_ASSERT_TRUE(result.success);
     TEST_ASSERT_EQUAL_UINT16(Config::MQTT_DEFAULT_PORT, result.update.port);
+    TEST_ASSERT_FALSE(result.update.tls_enabled);
+}
+
+void test_web_mqtt_save_utils_parse_tls_uses_8883_and_normalizes_ca() {
+    WebMqttSaveUtils::SaveInput input{};
+    input.host = "cloud.example.com";
+    input.user = "user";
+    input.pass = "pass";
+    input.device_name = "Aura";
+    input.base_topic = "aura/main";
+    input.tls_enabled = true;
+    input.ca_cert_pem = " \r\n-----BEGIN CERTIFICATE-----\r\nabc\r\n-----END CERTIFICATE-----\r\n ";
+
+    const WebMqttSaveUtils::ParseResult result =
+        WebMqttSaveUtils::parseSaveInput(input, {});
+
+    TEST_ASSERT_TRUE(result.success);
+    TEST_ASSERT_TRUE(result.update.tls_enabled);
+    TEST_ASSERT_EQUAL_UINT16(Config::MQTT_TLS_DEFAULT_PORT, result.update.port);
+    TEST_ASSERT_EQUAL_STRING("-----BEGIN CERTIFICATE-----\nabc\n-----END CERTIFICATE-----",
+                             result.update.ca_cert_pem.c_str());
+}
+
+void test_web_mqtt_save_utils_parse_rejects_tls_without_valid_ca() {
+    WebMqttSaveUtils::SaveInput input{};
+    input.host = "cloud.example.com";
+    input.user = "user";
+    input.pass = "pass";
+    input.device_name = "Aura";
+    input.base_topic = "aura/main";
+    input.tls_enabled = true;
+
+    WebMqttSaveUtils::ParseResult result =
+        WebMqttSaveUtils::parseSaveInput(input, {});
+    TEST_ASSERT_FALSE(result.success);
+    TEST_ASSERT_EQUAL_STRING("CA certificate is required when TLS is enabled",
+                             result.error_message.c_str());
+
+    input.ca_cert_pem = "not a certificate";
+    result = WebMqttSaveUtils::parseSaveInput(input, {});
+    TEST_ASSERT_FALSE(result.success);
+    TEST_ASSERT_EQUAL_STRING("CA certificate must be a PEM certificate",
+                             result.error_message.c_str());
+}
+
+void test_web_mqtt_save_utils_parse_rejects_oversized_ca() {
+    WebMqttSaveUtils::SaveInput input{};
+    input.host = "cloud.example.com";
+    input.user = "user";
+    input.pass = "pass";
+    input.device_name = "Aura";
+    input.base_topic = "aura/main";
+    input.ca_cert_pem.assign(Config::MQTT_CA_CERT_MAX_BYTES + 1, 'A');
+
+    const WebMqttSaveUtils::ParseResult result =
+        WebMqttSaveUtils::parseSaveInput(input, {});
+
+    TEST_ASSERT_FALSE(result.success);
+    TEST_ASSERT_EQUAL_STRING("CA certificate is too large", result.error_message.c_str());
 }
 
 int main(int, char **) {
@@ -95,5 +154,8 @@ int main(int, char **) {
     RUN_TEST(test_web_mqtt_save_utils_parse_accepts_and_normalizes_valid_payload);
     RUN_TEST(test_web_mqtt_save_utils_parse_rejects_invalid_payloads);
     RUN_TEST(test_web_mqtt_save_utils_parse_uses_default_port_when_empty);
+    RUN_TEST(test_web_mqtt_save_utils_parse_tls_uses_8883_and_normalizes_ca);
+    RUN_TEST(test_web_mqtt_save_utils_parse_rejects_tls_without_valid_ca);
+    RUN_TEST(test_web_mqtt_save_utils_parse_rejects_oversized_ca);
     return UNITY_END();
 }

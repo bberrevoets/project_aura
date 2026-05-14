@@ -284,7 +284,9 @@ WebUiBridge::ApplyResult UiController::applyMqttSaveBridge(
                                               update.base_topic,
                                               update.device_name,
                                               update.discovery,
-                                              update.anonymous)) {
+                                              update.anonymous,
+                                              update.tls_enabled,
+                                              update.ca_cert_pem)) {
         WebUiBridge::ApplyResult result =
             finalize_network_bridge_result(false, 500, "Failed to persist MQTT settings");
         result.snapshot = controller->buildWebUiSnapshot();
@@ -298,8 +300,10 @@ WebUiBridge::ApplyResult UiController::applyMqttSaveBridge(
     settings_update.pass = update.pass;
     settings_update.base_topic = update.base_topic;
     settings_update.device_name = update.device_name;
+    settings_update.ca_cert_pem = update.ca_cert_pem;
     settings_update.discovery = update.discovery;
     settings_update.anonymous = update.anonymous;
+    settings_update.tls_enabled = update.tls_enabled;
     if (!controller->networkCommandQueue.publishSavedMqttSettings(settings_update)) {
         WebUiBridge::ApplyResult result =
             finalize_network_bridge_result(false, 503, "Failed to apply MQTT settings");
@@ -730,6 +734,8 @@ void UiController::update_mqtt_ui() {
                 status = UiText::MqttStatusNoWifi();
             } else if (connectivity_.mqtt_connected) {
                 status = UiText::MqttStatusConnected();
+            } else if (connectivity_.mqtt_tls_waiting_for_time) {
+                status = UiText::MqttStatusWaitingTime();
             } else {
                 const uint8_t retry_stage = connectivity_.mqtt_retry_stage;
                 if (retry_stage >= 2) {

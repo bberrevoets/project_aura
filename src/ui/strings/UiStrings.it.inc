@@ -39,6 +39,7 @@
     "Riprovo...",
     "Nuovo tentativo ritardato",
     "Connessione...",
+    "Attesa ora...",
     "ON / OFF",
     "Ogni 6h",
     "http://192.168.4.1/wifi",

@@ -315,6 +315,7 @@ void loop()
                            boot_count,
                            safe_boot_stage);
     TimeManager::PollResult time_poll = timeManager.poll(now);
+    mqttManager.setSystemTimeValid(timeManager.isSystemTimeValid());
     uiController.onTimePoll(time_poll);
     fanControl.poll(now, &currentData, sensorManager.isWarmupActive());
     const FanControl::Snapshot fan_snapshot = fanControl.snapshot();

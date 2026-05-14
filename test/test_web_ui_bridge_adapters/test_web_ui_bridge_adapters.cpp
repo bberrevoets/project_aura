@@ -96,8 +96,10 @@ void test_web_ui_bridge_adapters_to_ui_save_updates_copy_payloads() {
     mqtt.pass = "pass";
     mqtt.base_topic = "aura/main";
     mqtt.device_name = "Aura";
+    mqtt.ca_cert_pem = "-----BEGIN CERTIFICATE-----\nabc\n-----END CERTIFICATE-----";
     mqtt.discovery = false;
     mqtt.anonymous = true;
+    mqtt.tls_enabled = true;
     const WebUiBridge::MqttSaveUpdate mqtt_result = WebUiBridgeAdapters::toUiMqttSaveUpdate(mqtt);
     TEST_ASSERT_EQUAL_STRING("broker", mqtt_result.host.c_str());
     TEST_ASSERT_EQUAL_UINT16(1884, mqtt_result.port);
@@ -105,8 +107,11 @@ void test_web_ui_bridge_adapters_to_ui_save_updates_copy_payloads() {
     TEST_ASSERT_EQUAL_STRING("pass", mqtt_result.pass.c_str());
     TEST_ASSERT_EQUAL_STRING("aura/main", mqtt_result.base_topic.c_str());
     TEST_ASSERT_EQUAL_STRING("Aura", mqtt_result.device_name.c_str());
+    TEST_ASSERT_EQUAL_STRING("-----BEGIN CERTIFICATE-----\nabc\n-----END CERTIFICATE-----",
+                             mqtt_result.ca_cert_pem.c_str());
     TEST_ASSERT_FALSE(mqtt_result.discovery);
     TEST_ASSERT_TRUE(mqtt_result.anonymous);
+    TEST_ASSERT_TRUE(mqtt_result.tls_enabled);
 }
 
 void test_web_ui_bridge_adapters_to_ui_dac_updates_map_types_and_values() {

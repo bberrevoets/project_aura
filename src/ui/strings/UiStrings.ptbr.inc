@@ -39,6 +39,7 @@
     "Tentando de novo...",
     "Nova tentativa atrasada",
     "Conectando...",
+    "Aguardando hora...",
     "ON / OFF",
     "A cada 6h",
     "http://192.168.4.1/wifi",

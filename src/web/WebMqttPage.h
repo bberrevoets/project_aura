@@ -36,8 +36,11 @@ struct PageData {
     String pass;
     String device_name;
     String base_topic;
+    String ca_cert_pem;
     bool anonymous = false;
     bool discovery = false;
+    bool tls_enabled = false;
+    bool tls_waiting_for_time = false;
 };
 
 RootAccess rootAccess(bool wifi_connected, bool mqtt_screen_open);

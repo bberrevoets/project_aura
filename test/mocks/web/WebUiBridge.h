@@ -91,7 +91,9 @@ public:
         String pass;
         String base_topic;
         String device_name;
+        String ca_cert_pem;
         bool discovery = true;
         bool anonymous = false;
+        bool tls_enabled = false;
     };
 };

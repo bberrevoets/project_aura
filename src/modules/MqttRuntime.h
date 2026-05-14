@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <Arduino.h>
 #include <stdint.h>
 
 class MqttRuntime {
@@ -14,4 +15,5 @@ public:
 
     virtual bool isConnected() = 0;
     virtual uint8_t retryStage() const = 0;
+    virtual void copyCaCertificate(String &out) const = 0;
 };

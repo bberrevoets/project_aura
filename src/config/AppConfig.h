@@ -383,6 +383,8 @@ namespace Config {
     constexpr uint32_t MQTT_RETRY_LONG_MS = 10UL * 60UL * 1000UL;
     constexpr uint16_t MQTT_BUFFER_SIZE = 1024;
     constexpr uint16_t MQTT_DEFAULT_PORT = Secrets::MQTT_PORT;
+    constexpr uint16_t MQTT_TLS_DEFAULT_PORT = 8883;
+    constexpr size_t MQTT_CA_CERT_MAX_BYTES = 16UL * 1024UL;
     constexpr const char *MQTT_DEFAULT_HOST = Secrets::MQTT_HOST;
     constexpr const char *MQTT_DEFAULT_USER = Secrets::MQTT_USER;
     constexpr const char *MQTT_DEFAULT_BASE = Secrets::MQTT_BASE;
@@ -480,6 +482,7 @@ namespace Config {
         bool mqtt_user_enabled = Secrets::MQTT_USER_ENABLED;
         bool mqtt_discovery = Secrets::MQTT_DISCOVERY;
         bool mqtt_anonymous = Secrets::MQTT_ANONYMOUS;
+        bool mqtt_tls_enabled = false;
 
         float temp_offset = 0.0f;
         float hum_offset = 0.0f;
