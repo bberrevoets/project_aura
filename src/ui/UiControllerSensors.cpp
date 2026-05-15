@@ -99,6 +99,7 @@ void UiController::update_sensor_cards(const AirQuality &aq, bool gas_warmup, bo
     lv_color_t co2_col = currentData.co2_valid ? getCO2Color(currentData.co2) : color_inactive();
     set_dot_color(objects.dot_co2_1, alert_color_for_mode(co2_col));
     if (show_co2_bar) {
+        sync_co2_marker_border();
         set_dot_color(objects.co2_marker_1, co2_col);
         update_co2_bar(currentData.co2, currentData.co2_valid);
 

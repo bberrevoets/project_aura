@@ -1478,6 +1478,13 @@ lv_color_t UiController::color_card_border() {
     return lv_color_hex(0xffe19756);
 }
 
+lv_color_t UiController::color_card_background() {
+    if (objects.card_co2_pro) {
+        return lv_obj_get_style_bg_color(objects.card_co2_pro, LV_PART_MAIN);
+    }
+    return lv_color_hex(0xff160c09);
+}
+
 lv_color_t UiController::color_for_display_band(DisplayThresholds::Band band) {
     switch (band) {
         case DisplayThresholds::Band::Green:
@@ -2576,6 +2583,15 @@ void UiController::update_co2_bar(int co2, bool valid) {
     int max_x = (track_w > 0) ? (track_w - marker_w - 2) : (340 - marker_w - 2);
     x = constrain(x, 2, max_x);
     lv_obj_set_x(objects.co2_marker_1, x);
+}
+
+void UiController::sync_co2_marker_border() {
+    if (!objects.co2_marker_1) {
+        return;
+    }
+    lv_obj_set_style_border_color(objects.co2_marker_1,
+                                  color_card_background(),
+                                  LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
 void UiController::update_ui() {

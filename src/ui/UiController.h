@@ -467,6 +467,7 @@ private:
     void update_dac_ui(uint32_t now_ms);
     void update_led_indicators();
     void update_co2_bar(int co2, bool valid);
+    void sync_co2_marker_border();
     void init_ui_defaults();
     void set_visible(lv_obj_t *obj, bool visible);
     void hide_all_sensor_info_containers();
@@ -490,6 +491,7 @@ private:
     lv_color_t color_red();
     lv_color_t color_blue();
     lv_color_t color_card_border();
+    lv_color_t color_card_background();
     lv_color_t getTempColor(float t);
     lv_color_t getHumidityColor(float h);
     lv_color_t getAbsoluteHumidityColor(float ah);
