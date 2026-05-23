@@ -32,6 +32,43 @@ public:
 
     using Status = Sfa40TestState::Status;
 
+    struct Diagnostics {
+        bool measuring = false;
+        bool measurement_state_unknown = false;
+        bool data_valid = false;
+        bool has_new_data = false;
+        bool warmup_active = false;
+        bool selftest_active = false;
+        Status status = Status::Absent;
+        const char *last_error = "unknown";
+        bool serial_valid = false;
+        uint16_t serial_words[3] = {};
+        uint32_t start_ms = 0;
+        uint32_t first_ready_ms = 0;
+        uint32_t first_within_spec_ms = 0;
+        uint32_t last_measurement_ms = 0;
+        uint32_t last_data_ms = 0;
+        uint32_t measurement_reads = 0;
+        uint32_t measurement_frames_ok = 0;
+        uint32_t measurement_data_ok = 0;
+        uint32_t measurement_read_failures = 0;
+        uint32_t read_command_errors = 0;
+        uint32_t read_bytes_errors = 0;
+        uint32_t read_crc_errors = 0;
+        uint32_t status_not_ready_count = 0;
+        uint32_t status_not_within_spec_count = 0;
+        uint32_t status_invalid_count = 0;
+        bool last_status_valid = false;
+        uint16_t raw_hcho = 0;
+        uint16_t raw_humidity = 0;
+        uint16_t raw_temperature = 0;
+        uint8_t status_byte = 0;
+        uint8_t status_reserved = 0;
+        float hcho_ppb = 0.0f;
+        float humidity_percent = 0.0f;
+        float temperature_c = 0.0f;
+    };
+
     static Sfa40TestState &state() {
         static Sfa40TestState instance;
         return instance;
@@ -69,5 +106,15 @@ public:
     void invalidate() {
         state().data_valid = false;
         state().invalidate_called = true;
+    }
+    Diagnostics diagnostics() const {
+        Diagnostics out;
+        out.data_valid = state().data_valid;
+        out.has_new_data = state().has_new_data;
+        out.warmup_active = state().warmup_active;
+        out.status = state().status;
+        out.last_data_ms = state().last_data_ms;
+        out.hcho_ppb = state().hcho_ppb;
+        return out;
     }
 };

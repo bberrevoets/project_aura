@@ -19,6 +19,64 @@ You can add this as a new view (tab) to your existing dashboard.
 5. Paste the contents of `dashboard.yaml`.
 6. Click Save.
 
+## MQTT Setup
+
+Aura publishes data to Home Assistant through MQTT. For a local Home Assistant
+installation, the usual setup is the Mosquitto Broker add-on.
+
+1. In Home Assistant, install and start the `Mosquitto Broker` add-on.
+2. Create a dedicated Home Assistant user for Aura, for example `aura_mqtt`.
+   This is done in `Settings -> People -> Users`, not inside the Mosquitto
+   add-on page.
+3. On Aura, open `Settings -> MQTT` on the device screen. This unlocks the MQTT
+   web setup page.
+4. Open `http://<aura-ip>/mqtt` in a browser.
+5. Set `Broker Address` to the internal IP address or hostname of your Home
+   Assistant server. Do not include `http://`.
+6. For local Mosquitto without TLS, use port `1883` and keep `Use TLS / SSL`
+   disabled. Do not use the Home Assistant web UI port `8123`.
+7. Enter the username and password of the dedicated Home Assistant user.
+8. Keep `Enable Home Assistant Discovery` enabled.
+9. Use a unique `MQTT base topic` for each Aura device.
+10. Click `Save`.
+
+After Aura connects and publishes discovery data, the entities should appear in
+Home Assistant under the MQTT integration. The dashboard YAML in this folder
+uses the default `project_aura` base topic.
+
+## MQTT TLS Brokers
+
+For cloud brokers or TLS-enabled brokers such as HiveMQ Cloud, enable
+`Use TLS / SSL` on Aura's `/mqtt` page.
+
+TLS setup requirements:
+- Use the broker hostname, not an IP address. Certificate verification matches
+  the broker certificate against that hostname.
+- Use the broker TLS port, usually `8883`.
+- Paste the broker CA certificate into `CA Certificate (PEM)`.
+- Make sure Aura has valid time from NTP. TLS certificate validation can wait
+  until system time is available.
+- Client certificates and private keys are not used.
+
+Local Home Assistant Mosquitto installations usually do not need TLS unless you
+configured TLS on the broker yourself.
+
+## MQTT Troubleshooting
+
+If Home Assistant shows entities as unavailable:
+- Confirm that Aura shows MQTT as connected.
+- Confirm that the broker address is the Home Assistant host/IP, not a URL.
+- Confirm that the port is `1883` for local non-TLS Mosquitto or `8883` for TLS.
+- Confirm that Home Assistant MQTT discovery is enabled in Aura.
+- Confirm that the discovery prefix is the Home Assistant default:
+  `homeassistant`.
+- If you have more than one Aura, make sure each one has a different
+  `MQTT base topic`.
+
+If Mosquitto logs show `Not authorized`, check the username and password first.
+The credentials should belong to a Home Assistant user, unless your broker is
+explicitly configured for anonymous access.
+
 ## Entity Configuration
 Entity IDs are derived from your `MQTT base topic`.
 
@@ -36,15 +94,6 @@ If you see "Entity not found" warnings:
 1. Go to Settings -> Devices & Services -> Entities.
 2. Search for your MQTT base topic or `Aura`.
 3. Open the dashboard code and use Find & Replace to swap the prefix.
-
-## MQTT TLS Brokers
-
-For cloud brokers such as HiveMQ Cloud, enable `Use TLS / SSL` on Aura's `/mqtt`
-page and paste the broker CA certificate into `CA Certificate (PEM)`.
-
-Use the broker hostname, not an IP address, when TLS is enabled. Certificate
-verification matches the broker certificate against that hostname. Client
-certificates and private keys are not used.
 
 ## Multiple Aura Devices
 Two Aura devices must use different `MQTT base topic` values.

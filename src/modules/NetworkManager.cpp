@@ -367,6 +367,10 @@ void AuraNetworkManager::attachDisplayThresholds(DisplayThresholdManager &displa
     web_ctx_.display_thresholds = &displayThresholds;
 }
 
+void AuraNetworkManager::attachSensorManager(SensorManager &sensorManager) {
+    web_ctx_.sensor_manager = &sensorManager;
+}
+
 void AuraNetworkManager::attachCommandQueue(NetworkCommandQueue &commandQueue) {
     g_network_command_queue = &commandQueue;
 }
@@ -383,6 +387,7 @@ void AuraNetworkManager::registerServerRoutes() {
     server.onGet(WebTemplates::kDashboardAppJsPath, dashboard_handle_app);
     server.onGet("/wifi", wifi_handle_root);
     server.onGet("/diag", diag_handle_root);
+    server.onGet("/debug/sfa40", sfa40_debug_handle_root);
     server.onPost("/save", wifi_handle_save);
     server.onGet("/mqtt", mqtt_handle_root);
     server.onPost("/mqtt", mqtt_handle_save);
@@ -405,6 +410,7 @@ void AuraNetworkManager::registerServerRoutes() {
     server.onGet("/api/state", state_handle_data);
     server.onGet("/api/events", events_handle_data);
     server.onGet("/api/diag", diag_handle_data);
+    server.onGet("/api/debug/sfa40", sfa40_debug_handle_data);
     server.onPost("/api/settings", settings_handle_update);
     server.onPost("/api/ota/prepare", ota_handle_prepare);
     server.onPostUpload("/api/ota", ota_handle_update, ota_handle_upload);

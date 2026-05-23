@@ -19,6 +19,7 @@ class ConnectivityRuntime;
 class WebUiBridge;
 class WebRuntimeState;
 class DisplayThresholdManager;
+class SensorManager;
 
 struct WebHandlerContext {
     WebRequest *server = nullptr;
@@ -57,4 +58,5 @@ struct WebHandlerContext {
     WebRuntimeState *web_runtime = nullptr;
     WebUiBridge *web_ui_bridge = nullptr;
     DisplayThresholdManager *display_thresholds = nullptr;
+    SensorManager *sensor_manager = nullptr;
 };

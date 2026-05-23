@@ -76,6 +76,8 @@ public:
     PressureSensorType pressureSensorType() const { return pressure_sensor_; }
     const char *pressureSensorLabel() const;
     const char *hchoSensorLabel() const;
+    HchoSensorType hchoSensorType() const { return hcho_sensor_type_; }
+    Sfa40::Diagnostics sfa40Diagnostics() const { return sfa40_.diagnostics(); }
     bool deviceReset() { return sen66_.deviceReset(); }
     void scheduleRetry(uint32_t delay_ms) {
         sen66_start_attempts_ = 0;

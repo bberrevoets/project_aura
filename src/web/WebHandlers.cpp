@@ -14,6 +14,7 @@
 #include "web/WebPortalHandlers.h"
 #include "web/WebSettingsApiHandlers.h"
 #include "web/WebShellAssetHandlers.h"
+#include "web/WebSfa40DebugHandlers.h"
 #include "web/WebSystemApiHandlers.h"
 #include "web/WebThresholdApiHandlers.h"
 #include "web/WebThemeApiHandlers.h"
@@ -138,6 +139,14 @@ void diag_handle_data() {
             WebHandlersSupport::isOtaStatusBusy(ota_snapshot),
             WebHandlersSupport::streamSnapshot(millis()));
     });
+}
+
+void sfa40_debug_handle_root() {
+    with_context(WebSfa40DebugHandlers::handleRoot);
+}
+
+void sfa40_debug_handle_data() {
+    with_context(WebSfa40DebugHandlers::handleData);
 }
 
 void mqtt_handle_root() {

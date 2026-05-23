@@ -147,6 +147,7 @@ void AppInit::initManagersAndConfig(Context &ctx, StorageManager::BootAction boo
     ctx.networkManager.attachWebRuntime(ctx.webRuntimeState);
     ctx.networkManager.attachWebUiBridge(ctx.webUiBridge);
     ctx.networkManager.attachDisplayThresholds(ctx.displayThresholds);
+    ctx.networkManager.attachSensorManager(ctx.sensorManager);
     ctx.networkManager.attachCommandQueue(ctx.networkCommandQueue);
     g_wifi_state_ctx.network = &ctx.networkManager;
     g_wifi_state_ctx.time_manager = &ctx.timeManager;

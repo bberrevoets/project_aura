@@ -24,6 +24,47 @@ public:
         ReadError,
     };
 
+    struct Diagnostics {
+        bool measuring = false;
+        bool measurement_state_unknown = false;
+        bool data_valid = false;
+        bool has_new_data = false;
+        bool warmup_active = false;
+        bool selftest_active = false;
+        Status status = Status::Absent;
+        const char *last_error = "unknown";
+
+        bool serial_valid = false;
+        uint16_t serial_words[3] = {};
+
+        uint32_t start_ms = 0;
+        uint32_t first_ready_ms = 0;
+        uint32_t first_within_spec_ms = 0;
+        uint32_t last_measurement_ms = 0;
+        uint32_t last_data_ms = 0;
+
+        uint32_t measurement_reads = 0;
+        uint32_t measurement_frames_ok = 0;
+        uint32_t measurement_data_ok = 0;
+        uint32_t measurement_read_failures = 0;
+        uint32_t read_command_errors = 0;
+        uint32_t read_bytes_errors = 0;
+        uint32_t read_crc_errors = 0;
+        uint32_t status_not_ready_count = 0;
+        uint32_t status_not_within_spec_count = 0;
+        uint32_t status_invalid_count = 0;
+
+        bool last_status_valid = false;
+        uint16_t raw_hcho = 0;
+        uint16_t raw_humidity = 0;
+        uint16_t raw_temperature = 0;
+        uint8_t status_byte = 0;
+        uint8_t status_reserved = 0;
+        float hcho_ppb = 0.0f;
+        float humidity_percent = 0.0f;
+        float temperature_c = 0.0f;
+    };
+
     bool begin();
     void start();
     void stop();
@@ -42,6 +83,7 @@ public:
     uint32_t lastDataMs() const { return last_data_ms_; }
     bool takeNewData(float &hcho_ppb);
     void invalidate();
+    Diagnostics diagnostics() const;
 
 private:
     enum class ErrorCause : uint8_t {
@@ -85,4 +127,28 @@ private:
     ErrorCause last_error_cause_ = ErrorCause::None;
     bool warmup_active_ = false;
     bool selftest_active_ = false;
+    bool serial_valid_ = false;
+    uint16_t serial_words_[3] = {};
+    uint32_t start_ms_ = 0;
+    uint32_t first_ready_ms_ = 0;
+    uint32_t first_within_spec_ms_ = 0;
+    uint32_t last_measurement_ms_ = 0;
+    uint32_t measurement_reads_ = 0;
+    uint32_t measurement_frames_ok_ = 0;
+    uint32_t measurement_data_ok_ = 0;
+    uint32_t measurement_read_failures_ = 0;
+    uint32_t read_command_errors_ = 0;
+    uint32_t read_bytes_errors_ = 0;
+    uint32_t read_crc_errors_ = 0;
+    uint32_t status_not_ready_count_ = 0;
+    uint32_t status_not_within_spec_count_ = 0;
+    uint32_t status_invalid_count_ = 0;
+    bool last_status_valid_ = false;
+    uint16_t last_raw_hcho_ = 0;
+    uint16_t last_raw_humidity_ = 0;
+    uint16_t last_raw_temperature_ = 0;
+    uint8_t last_status_byte_ = 0;
+    uint8_t last_status_reserved_ = 0;
+    float last_humidity_percent_ = 0.0f;
+    float last_temperature_c_ = 0.0f;
 };

@@ -22,6 +22,20 @@ bool sfa40StateUnknownAfterBoot() {
     return boot_reset_reason != ESP_RST_POWERON;
 }
 
+float decodeHumidityPercent(uint16_t raw) {
+    float humidity = 125.0f * (static_cast<float>(raw) / 65535.0f) - 6.0f;
+    if (humidity < 0.0f) {
+        humidity = 0.0f;
+    } else if (humidity > 100.0f) {
+        humidity = 100.0f;
+    }
+    return humidity;
+}
+
+float decodeTemperatureC(uint16_t raw) {
+    return 175.0f * (static_cast<float>(raw) / 65535.0f) - 45.0f;
+}
+
 } // namespace
 
 bool Sfa40::begin() {
@@ -39,6 +53,32 @@ bool Sfa40::begin() {
     last_error_cause_ = ErrorCause::None;
     warmup_active_ = false;
     selftest_active_ = false;
+    serial_valid_ = false;
+    for (uint16_t &word : serial_words_) {
+        word = 0;
+    }
+    start_ms_ = 0;
+    first_ready_ms_ = 0;
+    first_within_spec_ms_ = 0;
+    last_measurement_ms_ = 0;
+    measurement_reads_ = 0;
+    measurement_frames_ok_ = 0;
+    measurement_data_ok_ = 0;
+    measurement_read_failures_ = 0;
+    read_command_errors_ = 0;
+    read_bytes_errors_ = 0;
+    read_crc_errors_ = 0;
+    status_not_ready_count_ = 0;
+    status_not_within_spec_count_ = 0;
+    status_invalid_count_ = 0;
+    last_status_valid_ = false;
+    last_raw_hcho_ = 0;
+    last_raw_humidity_ = 0;
+    last_raw_temperature_ = 0;
+    last_status_byte_ = 0;
+    last_status_reserved_ = 0;
+    last_humidity_percent_ = 0.0f;
+    last_temperature_c_ = 0.0f;
     return true;
 }
 
@@ -104,6 +144,9 @@ void Sfa40::start() {
     last_error_cause_ = ErrorCause::None;
     last_poll_ms_ = start_command_ms;
     next_measurement_read_ms_ = start_command_ms + Config::SFA40_FIRST_READ_DELAY_MS;
+    start_ms_ = start_command_ms;
+    first_ready_ms_ = 0;
+    first_within_spec_ms_ = 0;
 }
 
 void Sfa40::stop() {
@@ -123,28 +166,53 @@ void Sfa40::stop() {
 }
 
 bool Sfa40::readMeasurement(MeasurementReadResult &result) {
+    ++measurement_reads_;
     uint16_t words[4];
     if (!readWords(Config::SFA40_CMD_READ_VALUES, words, 4, 0)) {
+        ++measurement_read_failures_;
         return false;
     }
 
+    ++measurement_frames_ok_;
+    const uint32_t now = millis();
     const uint8_t status = static_cast<uint8_t>((words[3] >> 8) & 0xFFU);
     const bool not_ready = (status & SFA40_STATUS_NOT_READY) != 0U;
     const bool not_within_spec = (status & SFA40_STATUS_NOT_WITHIN_SPEC) != 0U;
+    last_status_valid_ = true;
+    last_raw_hcho_ = words[0];
+    last_raw_humidity_ = words[1];
+    last_raw_temperature_ = words[2];
+    last_status_byte_ = status;
+    last_status_reserved_ = static_cast<uint8_t>(words[3] & 0xFFU);
+    last_humidity_percent_ = decodeHumidityPercent(words[1]);
+    last_temperature_c_ = decodeTemperatureC(words[2]);
+    last_measurement_ms_ = now;
+    if (!not_ready && first_ready_ms_ == 0) {
+        first_ready_ms_ = now;
+    }
+    if (!not_ready && !not_within_spec && first_within_spec_ms_ == 0) {
+        first_within_spec_ms_ = now;
+    }
     result.status_valid = true;
-    // The datasheet documents only 11 (not ready), 01 (sub-spec warmup) and
-    // 00 (within spec). Treat the undocumented 10 combination as invalid.
+    // The datasheet documents only 11 (not ready), 10 (sub-spec warmup) and
+    // 00 (within spec). Treat the undocumented 01 combination as invalid.
     if (not_ready && !not_within_spec) {
+        ++status_invalid_count_;
         last_error_cause_ = ErrorCause::ReadStatus;
         return false;
     }
     result.warmup_active = not_ready || not_within_spec;
     if (not_ready) {
+        ++status_not_ready_count_;
         last_error_cause_ = ErrorCause::ReadStatus;
         return false;
     }
+    if (not_within_spec) {
+        ++status_not_within_spec_count_;
+    }
 
     result.hcho_ppb = static_cast<float>(words[0]) / 10.0f;
+    ++measurement_data_ok_;
     return true;
 }
 
@@ -323,10 +391,15 @@ bool Sfa40::detectSensor() {
     }
     for (uint16_t word : words) {
         if (word != 0) {
+            for (size_t i = 0; i < 3; ++i) {
+                serial_words_[i] = words[i];
+            }
+            serial_valid_ = true;
             last_error_cause_ = ErrorCause::None;
             return true;
         }
     }
+    serial_valid_ = false;
     last_error_cause_ = ErrorCause::DetectSensor;
     return false;
 }
@@ -334,6 +407,7 @@ bool Sfa40::detectSensor() {
 bool Sfa40::readWords(uint16_t cmd, uint16_t *out, size_t words, uint32_t delay_ms) {
     if (!writeCmd(cmd)) {
         last_error_cause_ = ErrorCause::ReadCommand;
+        ++read_command_errors_;
         return false;
     }
     delay(delay_ms);
@@ -341,21 +415,65 @@ bool Sfa40::readWords(uint16_t cmd, uint16_t *out, size_t words, uint32_t delay_
     uint8_t buf[12];
     if (bytes > sizeof(buf)) {
         last_error_cause_ = ErrorCause::ReadBytes;
+        ++read_bytes_errors_;
         return false;
     }
     if (!readBytes(buf, bytes)) {
         last_error_cause_ = ErrorCause::ReadBytes;
+        ++read_bytes_errors_;
         return false;
     }
     for (size_t i = 0; i < words; ++i) {
         const uint8_t *p = &buf[i * 3];
         if (I2C::crc8(p, 2) != p[2]) {
             last_error_cause_ = ErrorCause::ReadCrc;
+            ++read_crc_errors_;
             return false;
         }
         out[i] = (static_cast<uint16_t>(p[0]) << 8) | p[1];
     }
     return true;
+}
+
+Sfa40::Diagnostics Sfa40::diagnostics() const {
+    Diagnostics out;
+    out.measuring = measuring_;
+    out.measurement_state_unknown = measurement_state_unknown_;
+    out.data_valid = data_valid_;
+    out.has_new_data = has_new_data_;
+    out.warmup_active = warmup_active_;
+    out.selftest_active = selftest_active_;
+    out.status = status_;
+    out.last_error = errorCauseLabel();
+    out.serial_valid = serial_valid_;
+    for (size_t i = 0; i < 3; ++i) {
+        out.serial_words[i] = serial_words_[i];
+    }
+    out.start_ms = start_ms_;
+    out.first_ready_ms = first_ready_ms_;
+    out.first_within_spec_ms = first_within_spec_ms_;
+    out.last_measurement_ms = last_measurement_ms_;
+    out.last_data_ms = last_data_ms_;
+    out.measurement_reads = measurement_reads_;
+    out.measurement_frames_ok = measurement_frames_ok_;
+    out.measurement_data_ok = measurement_data_ok_;
+    out.measurement_read_failures = measurement_read_failures_;
+    out.read_command_errors = read_command_errors_;
+    out.read_bytes_errors = read_bytes_errors_;
+    out.read_crc_errors = read_crc_errors_;
+    out.status_not_ready_count = status_not_ready_count_;
+    out.status_not_within_spec_count = status_not_within_spec_count_;
+    out.status_invalid_count = status_invalid_count_;
+    out.last_status_valid = last_status_valid_;
+    out.raw_hcho = last_raw_hcho_;
+    out.raw_humidity = last_raw_humidity_;
+    out.raw_temperature = last_raw_temperature_;
+    out.status_byte = last_status_byte_;
+    out.status_reserved = last_status_reserved_;
+    out.hcho_ppb = last_hcho_ppb_;
+    out.humidity_percent = last_humidity_percent_;
+    out.temperature_c = last_temperature_c_;
+    return out;
 }
 
 bool Sfa40::ensureIdleBeforeDetect() {

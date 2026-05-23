@@ -22,6 +22,7 @@ class ConnectivityRuntime;
 class WebUiBridge;
 class WebRuntimeState;
 class DisplayThresholdManager;
+class SensorManager;
 
 class AuraNetworkManager {
 public:
@@ -48,6 +49,7 @@ public:
     void attachWebRuntime(WebRuntimeState &webRuntime);
     void attachWebUiBridge(WebUiBridge &webUiBridge);
     void attachDisplayThresholds(DisplayThresholdManager &displayThresholds);
+    void attachSensorManager(SensorManager &sensorManager);
     void attachCommandQueue(NetworkCommandQueue &commandQueue);
     void setStateChangeCallback(StateChangeCallback cb, void *ctx);
     void poll();
