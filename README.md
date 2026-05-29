@@ -143,7 +143,7 @@ only when they make sense for your room, workshop, printer setup, or automation 
 | Core Board, 4.3" | [Waveshare ESP32-S3-Touch-LCD-4.3 (800x480)](https://www.waveshare.com/esp32-s3-touch-lcd-4.3.htm?&aff_id=144793) |
 | Core Board, 7" | [Waveshare ESP32-S3-Touch-LCD-7.0](https://www.waveshare.com/esp32-s3-touch-lcd-7.htm?&aff_id=144793) |
 | Main Sensor | [Sensirion SEN66](https://sensirion.com/products/catalog/SEN66) via custom Aura PCB or Adafruit SEN6x breakout |
-| Recommended Sensor Hub | [Project Aura AQ Sensor Hub PCB v1.1](https://www.pcbway.com/project/shareproject/Project_Aura_AQ_Sensor_Hub_PCB_v1_1_e4aa6e80.html) (optional but recommended) |
+| Recommended Sensor Hub | [Project Aura AQ Sensor Hub PCB v1.1](https://www.pcbway.com/project/shareproject/Project_Aura_AQ_Sensor_Hub_PCB_v1_1_e4aa6e80.html) with built-in BMP388 pressure sensor, RTC module, capacitor, and the required sensor connectors (optional but recommended) |
 | Carbon Monoxide (CO) | [DFRobot SEN0466 — Factory Calibrated Electrochemical CO (0-1000 ppm, I2C & UART)](https://www.dfrobot.com/product-2508.html?tracking=aJ5V32) (optional) |
 | Formaldehyde (HCHO) | Sensirion SFA30 (0-1000 ppb) **or** SFA40 — both autodetected. SFA40 available as the [DFRobot SEN0661 breakout](https://www.dfrobot.com/product-3020.html?tracking=aJ5V32) (optional) |
 | Optional DFR Gas Slot | One DFRobot electrochemical sensor at a time: [SEN0469 NH3](https://www.dfrobot.com/product-2513.html?tracking=aJ5V32), [SEN0470 SO2](https://www.dfrobot.com/product-2514.html?tracking=aJ5V32), [SEN0471 NO2](https://www.dfrobot.com/product-2515.html?tracking=aJ5V32), [SEN0467 H2S](https://www.dfrobot.com/product-2511.html?tracking=aJ5V32), or [SEN0472 O3](https://www.dfrobot.com/product-2516.html?tracking=aJ5V32). Set the module's I2C address to `0x75` per the [DFRobot wiki](https://wiki.dfrobot.com/sen0465/docs/21907) (optional) |
@@ -165,7 +165,7 @@ Choose one electronics path. You do not need both.
 
 **Recommended path: custom Aura PCB**
 - Replaces several separate modules, hubs, short cables, and capacitor wiring with one dedicated board.
-- Includes the pressure sensor, RTC, SEN66 connection path, capacitor, and optional sensor connectors.
+- Includes a BMP388 pressure sensor, RTC module, SEN66 connection path, capacitor, and all required connectors for the supported optional sensors.
 - Lets most optional sensors connect using the cables supplied with those sensor modules.
 - Best choice for new builders when the PCB is available in your region.
 
